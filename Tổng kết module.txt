@@ -1,0 +1,120 @@
+JSAdvance
+
+
+
+#***Dùng Map thay if else và switch case:
+if else là cấu trúc bậc thang
+switch case nhanh hơn if else đáng kể khi số lượng điều kiện lớn. Do mỗi điều kiện k phụ thuộc vào điều kiện trước đó nên dùng cấu trúc cây rẽ nhánh để thực hiện song song như trong mạch logic ấy sẽ nhanh hơn.
+=> Tuy nhiên trong Js khi muốn search theo key nên dùng new Map là nhanh nhất. Map là 1 instanceof Object nhưng sinh ra để search nhanh hơn, nên dùng thay thế
+
+
+
+#***Hiểu về datatype
+Kiểu dữ liệu nguyên thủy là kiểu kích thước cố định nên đơn giản và cải thiện tốc độ truy vấn biến. Do đó được lưu trong ngăn xếp cố định nên truy cập theo giá trị.
+Kiểu dữ liệu tham chiếu là kiểu có kích thước thay đổi nên k được lưu trữ trong ngăn xếp cố định mà phải lưu trên heap và truy cập theo địa chỉ reference nên tốc độ truy vấn biến chậm hơn. Như array, object,...
+=> Các biến class trong C# được lưu trên heap, kể cả các class rỗng vì thực tế class rỗng thì hệ thống vẫn lưu nhiều trường ẩn lq đến nó. Lưu trên heap cũng giúp C# garbage collector tự động thu gom rác trên heap giải phóng bộ nhớ khi k còn tham chiếu mà k cần quan tâm đến phạm vi sử dụng (khi không còn biến nào trên stack lưu reference tới nó nữa)
+
+
+
+# K dùng typeof (cho frontend)
+
+
+
+# Design pattern JS
+
+
+
+# Class trong JS
+
+
+
+# NodeJS
+
+
+
+# MongoDB Pattern
+
+
+
+#***Optimize khi FE call API BE nhiều lần
+Nhiều lúc có các component vào phát cần gọi 20 cái api 1 lúc. Nếu nhiều client sẽ rất nặng backend, mà backend k thể gom chung thành 1 vì mỗi data cần lấy từ nhiều nơi. 
+Khi đó nên push mọi requests vào 1 queue và gọi từng chunk max 3 api đồng thời để tránh quá tải server. Mục tiêu là tránh quá tải server chứ kp tối ưu frontend vì làm v có thể request bị lâu hơn.
+
+
+
+#***LRU cache
+Trong JS có WeakMap và WeakSet và WeakRef giúp giải phóng bộ nhớ reference tót hơn khi không sử dụng.
+Nhưng đối với bộ nhớ đệm từ xa thì k nên vì dữ liệu từ xa có thể bị xóa khỏi đệm 1 cách khó lường mà bên gọi không biết. Khi đó tốt nhất là sử dụng LRU cache
+
+Bộ cache giói hạn giá trị. VD 10 giá trị chẳng hạn. Thì khi thêm vào cache giá trị thứ 11, nó sẽ tự xóa cái Least Recent Used.
+Implement LRU cache trong JS: https://medium.com/dsinjs/implementing-lru-cache-in-javascript-94ba6755cda9
+
+
+
+# CMS (Content Management System) là hệ thống quản trị nội dung. VD ta quản lý text, video, ảnh các thứ bằng CMS chẳng hạn. Nó khác với 1 cái store bth ở chỗ nó dùng để quản lý tài nguyên trên trang web. 1 CMS tốt sẽ cho phép quản lý website hoàn toàn bằng giao diện mà k cần code. VD như wordpress, admin có thể vào quản lý tài nguyên trang web hay tạo các thành phần web hoàn toàn bằng giao diện và là serverless luôn.
+Strapi là 1 CMS giúp tạo serverless. Ta có thể vào tạo ra data bằng giao diện và nó tự tạo RESTful API hoặc GraphQL để tương tác luôn mà k cần code.
+
+
+
+#***Nên lưu JWT ở localStorage hay cookie cho an toàn
+CSRF (Cross site request forgery) là kiểu tấn công ta ấn vào link trang web này thì bị redirect đến 1 trang web khác đã đăng nhập và thực hiện lệnh k mong muốn
+=> ref tới "NodeJS / Module bảo mật server nodejs" giải thích chuẩn hơn
+XSS là lợi dụng input html vào web để lấy các thông tin bằng JS.
+
+Để chống:
+CSRF chống tốt nhất là Double Submit Cookie: Server sinh token random unique gửi cho client, mỗi request client phải gửi lại token cho server, server xác minh hợp lệ thì cho phép thực hiện. 
+Nếu tấn công như trên gọi từ trang web A call api tới web B sẽ k có trường random trong cookie tương ứng gửi kèm nên k thực hiện được.
+XSS thì mỗi vị trí input đều phải chống, biến input thành params chứ kp điền vào chỗ trống rồi replace nữa.
+
+=> Nhiều căn cứ cho thấy nên dùng cookie hơn vì httpOnly giúp cookie không thể truy cập bằng XSS mà chỉ thông qua http API, còn SameSite=Strict Secure giúp ngăn gửi cookie trong mọi cross-site khác. 
+
+Khi dùng localStorage thì phải chống XSS attack ở mọi nơi. Còn khi dùng cookie đã tự bảo vệ dữ liệu trong cookie khỏi XSS nhờ httpOnly rồi, nhưng ta lại phải chống CRSF attack
+Để chống CSRF attack thì client cần lưu CSRF random token. Có nhiều cách lưu:
+- Lưu trong 1 biến JS: cách này được nhưng k hay vì lại phải chống XSS attack cản người dùng truy cập vào biến đó.
+- Lưu trong cookie (có httpOnly), server sẽ lấy từ cookie ra check => cách này chuẩn, tự cản XSS CSRF token đó
+- Lưu là data của 1 hidden form field gửi kèm
+- Ghi vào code JS gửi qua 1 custom header, VD: X-CSRF-Token
+=> Cần làm mới CSRF token sau mỗi yêu cầu thành công để tăng cường bảo mật.
+
+
+
+#***Các pp bảo mật ít dùng
+Token JWT
+Rate limit: Hạn chế 1 token chỉ được request tới server n lần/x phút
+Dùng đủ cors headers
+
+Timestamp mechanism: cơ chế chống replicate attack và DDoS (nhưng không mạnh). VD ta cấm 1 request được lặp lại trong quá 1p bằng cách lưu dấu thời gian lại.
+Nonce: Cơ chế chống replicate attack. Server lưu thêm nonce và nếu 1 nonce từng được sử dụng sẽ lỗi luôn.
+=> ref tới "# Bảo mật server nodejs"
+
+Signature Generation: VD MITM bắt request chuyển tiền và sửa payload người nhận thành hacker. Giải pháp này là ký cái payload bằng khóa của người dùng thì nếu hacker đổi payload sẽ k khớp với sig nữa, lại phải có cơ chế riêng bảo mật khóa để ký (hoặc lưu local máy người dùng mỗi khi login). 
+Các ứng dụng thường dùng giải pháp an toàn như gửi qua mail hay VD trong app ngân hàng nó thường gửi thẳng OTP về điện thoại, google authen
+
+BlackList: Cho người dùng hoặc IP nào spam vào blacklist cấm luôn, Vd khi 1 người dùng gửi quá nhiều request trong 10s liên tiếp. Có thể lưu vào redis chẳng hạn.
+WhiteList: cấm mọi thứ trừ các IP và user trong whitelist
+
+
+
+# Other
+-> NodeJS có cli:
+node -> http.STATUS_CODES
+        Date.now()
+
+-> Công nghệ của instagram:
+Ứng dụng đầu tiên là dùng cho iOS, frontend code bằng ObjectiveC với UIKit native luôn.
+Frontend request tới load balancer là từ cloud Amazon's Elastic Load balancer. Họ cũng sử dụng 3 instance NGINX để hỗ trợ
+Server chạy bằng DJango python với Gunicorn là WSGI Server (Web Server Gateway Interface). Họ dùng Fabric để chạy command đồng thời trên nhiều máy giúp deploy code trong vài giây
+Database dùng Postgres (nghiêm ngặt hơn MySQL).
+S3 và Cloudfront là cloud để lưu media
+Bộ đệm dùng redis và memcached. Redis lưu ảnh xạ 300 triệu ảnh tới user
+Push notification dùng pyapns là dịch vụ thông báo của apple
+Centri giúp ghi monitor log trong ứng dụng. 
+
+--> WSGI server là chuyên cho các app python nằm trung gian giữa ứng dụng và server. Cung tính năng pooling để kết nối hiệu quả, cung 1 giao diện chung cho các máy chủ web python nên ứng dụng web viết theo tiêu chuẩn của WSGI có thể chạy trên nhiều máy chủ khác nhau mà k cần sửa đổi.
+=> Nch là dùng máy chủ python thì nên thêm vào 1 WSGI server nx
+
+Fabric là một công cụ mã nguồn mở được thiết kế để giúp tự động hóa các nhiệm vụ quản lý hệ thống và triển khai ứng dụng tự động bằng Python.
+
+Amazon S3 (Simple Storage Service) cho phép lưu trữ và truy cập data từ bất kỳ đâu. Càng xa thì tốc dộ càng chậm. Do đó họ thường kết hợp thêm Amazon Cloudfront là dịch vụ CDN giúp phân phối nội dung tốc độ cao
+
+

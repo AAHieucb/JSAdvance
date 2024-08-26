@@ -1,6 +1,3 @@
-// # Use pubsub 
-// Dùng fanout exchange
-
 const amqplib = require("amqplib");
 
 // .env
@@ -12,6 +9,7 @@ const receive = async () => {
     const conn = await amqplib.connect(amqp_url_docker);
     const channel = await conn.createChannel();
 
+    // Dùng fanout exchange
     const nameExchange = "video";
     await channel.assertExchange(nameExchange, "fanout", {
       durable: false
@@ -20,7 +18,8 @@ const receive = async () => {
     // Tạo queue subscribe vào exchange
     const { queue } = await channel.assertQueue("", {
       exclusive: true, 
-      // Khi dùng pubsub với fanout, ta k xđ routing key nên nó kqtr việc đặt tên queue là gì, do đó ta để rỗng thì rabbitMQ sẽ tự sinh random name cho ta. Dùng exclusive true thì khi tắt sẽ tự xóa queue này luôn
+      // Khi dùng pubsub với fanout, ta k xđ routing key nên nó kqtr việc đặt tên queue là gì, do đó để rỗng thì rabbitMQ tự sinh random name cho ta
+      // Dùng exclusive true thì khi tắt sẽ tự xóa queue này luôn
     });
     console.log("nameQueue::", queue);
 

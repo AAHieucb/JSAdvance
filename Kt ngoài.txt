@@ -1,0 +1,40 @@
+# Công nghệ của instagram
+Ứng dụng đầu tiên là dùng cho iOS, frontend code bằng ObjectiveC với UIKit native luôn.
+Frontend request tới load balancer là từ cloud Amazon's Elastic Load balancer. Họ cũng sử dụng 3 instance NGINX để hỗ trợ
+Server chạy bằng DJango python với Gunicorn là WSGI Server (Web Server Gateway Interface). 
+Họ dùng Fabric để chạy command đồng thời trên nhiều máy giúp deploy code trong vài giây
+Database dùng Postgres (nghiêm ngặt hơn MySQL).
+S3 và Cloudfront là cloud để lưu media
+Bộ đệm dùng redis và memcached. Redis lưu ảnh xạ 300 triệu ảnh tới user
+Push notification dùng pyapns là dịch vụ thông báo của apple
+Centri giúp ghi monitor log trong ứng dụng. 
+
+--> WSGI server là chuyên cho các app python nằm trung gian giữa ứng dụng và server. Cung tính năng pooling để kết nối hiệu quả, cung 1 giao diện chung cho các máy chủ web python nên ứng dụng web viết theo tiêu chuẩn của WSGI có thể chạy trên nhiều máy chủ khác nhau mà k cần sửa đổi => Dùng máy chủ python thì nên thêm vào 1 WSGI server nx
+Fabric là một công cụ mã nguồn mở được thiết kế để giúp tự động hóa các nhiệm vụ quản lý hệ thống và triển khai ứng dụng tự động bằng Python.
+Amazon S3 (Simple Storage Service) cho phép lưu trữ và truy cập data từ bất kỳ đâu. Càng xa thì tốc dộ càng chậm. Do đó họ thường kết hợp thêm Amazon Cloudfront là dịch vụ CDN giúp phân phối nội dung tốc độ cao
+
+
+
+# Gửi 4M notification trong 5s
+Usecase của duonglingo: 1 sự kiện lớn phát quảng cáo của họ trong 5s, ngay lúc đó, 4M người dùng đang xem sẽ nhận được thông báo. Tức cần gửi 800_000 noti mỗi giây, mà hệ thống chỉ đang chịu tải 10_000 noti mỗi giây. 
+Cần giải quyết vấn đề tăng tốc độ lên 80 lần, chi phí bỏ ra phải nhỏ nhất do triển khai trên AWS.
+Thời điểm quảng cáo không biết trước thì đội ngũ marketing phải ngồi rình quảng cáo để bấm nút hình vuông màu đỏ, kích hoạt việc gửi notification.
+
+Hệ thống tạm thời: DynamoDB  CloudWatch  S3Bucket
+Admin -> API server -> AWS SQS FIFO queue -> EC2[Interim workers] -> AWS SQS Message Queue -> Notification workers -> External Push Notification Service (FCM và APNS)
+Trong đó, list user đã có sẵn trên DynamoDB, CloudWatch dùng để ghi log mọi quá trình.
+Có sẵn hệ thống notification worker độc lập bind vào MQ rồi. Chỉ cần gửi message vào queue là nó bắt được xử lý liền. 
+
+Trước sự kiện vài tháng, lấy data từ dynamoDB lưu vào S3Bucket. Vì chi phí S3 để lưu trữ, truy vấn liên tục và xử lý rẻ hơn, S3 cũng giúp dễ dàng phân tích dữ liệu hơn mà k ảnh hưởng hiệu suất db chính.
+Vài tiếng trước sự kiện: scale số lượng interim workers trong EC2 lên 20 con, notification workers scale lên 500 con. 20 con worker trong EC2 sẽ lấy 4M user trong S3 vào in-memory (hoặc cache) sẵn sàng thao tác. 
+Vào thời điểm diễn ra sự kiện, ấn nút là call api tới server, server gửi 50 message tới FIFO queue. Lúc này 20 interim worker chờ sẵn đang thao tác cùng lúc, bắt 1 message là đẩy 800_000 ngừoi vào MQ. Lúc này MQ đang có lượng data rất lớn và 500 notifications workers chờ sẵn để lấy ra xử lý. Nhưng SQS MQ bị giới hạn 120_000 message/s khi xử lý nên họ lách luật bằng cách gom 100 user vào 1 message, rồi mới đẩy vào SQS queue, tức còn tầm 4M/100=40000 messages thôi, mỗi interim bắt 1 message là gửi 800 vào queue. Rồi 500 worker bắt được sẽ gửi tới API của APNS và FCM thôi.
+
+Ở đây họ dùng FIFO queue để giải quyết vấn đề 1 ngừoi bấm nút nhiều lần hoặc nhiều người bấm cùng lúc. 1 lần bấm lỗi phải đảm bảo lần bấm sau vẫn tính, thì queue này có tác dụng lọc trùng, nếu 1 message gửi 2 lần sẽ discard message thứ 2, đảm bảo đúng 50 message setup từ trước được gửi đi. Queue cũng giúp chia task từ từ, lỗi 1 nơi k hỏng hết, thay vì interim worker push toàn bộ 4M user vào MQ sau luôn.
+
+Kiểm thử hiệu năng tìm ra bottle neck bằng cách gửi các payload rỗng tới nhiều thiết bị xem độ trễ do đâu. Tìm ra con số tối ưu cho số lượng thread, process, thuật toán bin packing để phân phối task vài CPU và memory tối ưu. 
+Bin packing là bài toàn sắp xếp kiện hàng có khối lượng khác nhau vào các thùng kích thước fix sao cho số lượng thùng là ít nhất.
+
+Kiểm thử với thông báo thật với số lượng tăng dần 1 triệu, rồi 4 triệu, ghi log để check xem thời gian thống kê những ai lâu hơn 5s và tìm NN.
+Trong duonglingo có Zombie mode là chế độ hệ thống tự động sử dụng khi sô lượng request tăng đột biến làm quá tải. App sẽ hạn chế gửi request tới BE trong 1 ktg nhất định bằng xs để giảm tải cho server k bị sập.
+
+

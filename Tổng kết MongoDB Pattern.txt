@@ -1,7 +1,8 @@
 MongoDB Pattern
 
 
-#***Thiết kế quan hệ cho các models trong mongodb 
+//!!!!!!!!!!
+# Thiết kế quan hệ cho các models trong mongodb 
 1 model có thể embbded hoặc reference tới 1 model khác. Nếu embbeded thì viết code trực tiếp vào và truy vấn 1 bảng thôi còn reference sẽ ref tới nhiều bảng khác. Embbded có thể nhanh hơn nhưng khiến model code rối
 
 one to many: cha ref tới 10 con chẳng hạn
@@ -18,7 +19,7 @@ Biết dùng pattern nào, chia schema như nào cần phân tích dữ liệu: 
 
 
 
-#***2 kiểu connect mongodb có srv hoặc không
+# 2 kiểu connect mongodb có srv hoặc không
 DNS seed list connection format là 1 định dạng chuỗi IP or tên miền để kết nối trong mạng ngang hàng thông qua DNS, được phân tách bằng dấu phẩy hoặc xuống dòng. Tên miền với IP là 1 vì qua DNS thành IP hết.
 VD các địa chỉ seed này là ip để hệ thống mới kết nối vào các node có sẵn trong mạng khi khởi động.
 

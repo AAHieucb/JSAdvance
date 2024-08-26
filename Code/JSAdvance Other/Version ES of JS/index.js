@@ -1,31 +1,16 @@
-// Các tính năng càng hiện đại có thể trình duyệt cũ k chạy và cần chú ý polyfill
-// Nếu báo is not a function thì có thể là trình duyệt cũ chưa update polyfill
-
-// *ES2015
-// Arrow function
-// Class với constructor và hàm như bth
-// let và const
-// tepmlate string `${}`
-// Promises
+// Các tính năng càng hiện đại có thể trình duyệt cũ k chạy và cần thêm polyfill
 
 // *ES2016
-// Array.prototype.includes()
 // 2**2 = 4
 
 // *ES2017
-// Object.values/Object.entries
-// Trailing commas in parameter lists: Cả hai (a) => {} và (a,) => {} đều là định nghĩa hàm hợp lệ
-// async/await
 // padStart()/padEnd()
-/* Object.getOwnPropertyDescriptors
-Enumerable properties object là các thuộc tính của 1 object mà sẽ hiển thị nếu ta muốn nó hiện ra bằng vòng for...in hoặc Object.keys, VD writable, enumerable...
-Object.getOwnPropertyDescriptor của ES2017 giúp lấy ra toàn bộ Enumerable properties object của 1 biến
+/*
+Enumerable properties object là các thuộc tính của 1 object mà sẽ hiển thị bằng vòng for...in hoặc Object.keys, VD writable, enumerable...
+Object.getOwnPropertyDescriptors của ES2017 giúp lấy ra toàn bộ Enumerable properties object của 1 biến
 */
 
 // *ES2018
-// finally trong try catch
-
-// Phân biệt rest param và spread operator
 // Rest param dùng với mảng, object, function params. VD với mảng:
 const myArray = ["anonystick", "medium", "reddit"]
 const [firstName, ...restElements] = myArray;
@@ -34,7 +19,7 @@ console.log(restElements); // ["medium", "reddit"]
 
 // Spread operator chỉ dùng với mảng và object
 const withoutAnonystick = ["medium", "Reddit"];
-const wholeBlog= ["Anonystick", ...withoutAnonystick]; //["Anonystick", "medium", "Reddit"]
+const wholeBlog= ["Anonystick", ...withoutAnonystick]; // ["Anonystick", "medium", "Reddit"]
 
 // Spread operator y hệt thay thế hoàn toàn API cũ là Object.assign();
 // Object bên phải sẽ overwrite object bên trái
@@ -43,7 +28,7 @@ var o2 = {b: 3};
 console.log(Object.assign({}, {a: 0}, o1, o2)); // {a: 1, b: 3}
 console.log({a: 0, ...o1, ...o2}); // {a: 1, b: 3}
 
-// for await...of => loop qua 1 async/sync iterable object. Tức nó duyệt bất đồng bộ cần có await để làm nó đúng thứ tự => tức dùng khi cần duyệt 1 async iterable object 1 cách đồng bộ => éo bh dùng luôn ấy
+// for await...of => loop qua 1 async/sync iterable object. Duyệt bất đồng bộ cần có await để làm nó đúng thứ tự => dùng khi cần duyệt 1 async iterable object 1 cách đồng bộ
 async function* foo() { // 1 async iterable object 
   yield 1;
   yield 2;
@@ -85,12 +70,7 @@ console.log(Symbol('desc').description); // Symbol.prototype.description
 try{} catch{} 
 try{} catch(e){} 
 
-
 // *ES2020
-// String.prototype.matchAll
-// BigInt
-// Optional Chaining Operator(?.)
-
 // Dynamic import
 // Trong nodejs, nhờ CommonJS mà ta dùng require() được, rồi sẽ convert hết sang import export thôi
 // Trong browser dùng ES6, ta có thể nhúng file js vào với type="module" thì file js đó dung được import export trực tiếp bth. Khi đó, user tải lại trang sẽ phải tải lại file js. VD 10 user vào mà chỉ 2 user sử dụng tính năng trong file js đó thì việc tải file js mọi lần sẽ phí công
@@ -107,24 +87,8 @@ new Promise((resolve) => {
   .catch(function(error) { console.log(error); })
   .finally(function() { isLoading = false; console.log("Call from finally") });
 
-// Nullish coalescing Operator
-let anonystick = {
-  profile: {
-      website: 'anonystick.com',
-      type: 'blog javascript',
-      age: 0,
-      release: ''
-  }
-}
-// VD muốn check null thì hiển thị 1 giá trị khác. Nhưng dùng logic bth sẽ luôn convert "" và 0 là false, phải dùng null coalescing chỉ chạy vế phải nếu đúng chuẩn là null
-console.log(anonystick.profile.age || 18) // 18
-console.log(anonystick.profile.age ?? 18) // 0
-console.log(anonystick.profile.release ? '17/07/2014' : 18) // 18
-console.log(anonystick.profile.release ?? 18) // ''
 
 // *ES2021
-// String.prototype.replaceAll()
-// Promise.any()
 // Logical assignment operators(&&=, ||=, ??=)
 
 // Numeric separator: Sử dụng dấu ngăn cách số cho dễ nhìn. Thư viện underscore trước có cung cấp
@@ -143,7 +107,7 @@ const callback = () => {
 (async function(){
   await new Promise((resolve) => {
     setTimeout(() => {
-      callback(); //Print "Anonystick.com"
+      callback(); // Print "Anonystick.com"
       resolve();
     }, 2000);
   });
@@ -208,7 +172,7 @@ displayError(code, 'Invalid variable name');
 // console.log(withThree); // [ 1, 2, 3, 4 ]
 
 
-// # Class trong JS
+
 // ES5: từ khóa class chưa tồn tại khiến cho JS k dùng được cho OOP chuẩn
 function City(name, x, y) {
   this.name = name;
@@ -228,27 +192,13 @@ const _city = new City('Hồ Chí Minh', 100, 200);
 console.log(_city.getLocation());
 // ES6: từ khóa class trở thành chuẩn, kbh dùng function là class như trên nữa
 
-// Trong JS, biến có các tính chất như C++. Nhưng ta thường muốn có tính chất immutable, tức đổi array trả ra 1 array mới mà k ảnh hưởng tới array cũ chẳng hạn. Có nhiều cách đạt được điều này:
-// Ngày xưa thì thủ công việc copy array rồi thao tác với bản đã copy k ảnh hưởng bản gốc. Nhưng performance thấp, VD ta đã duyệt 1 lần để copy, sau đó thao tác có thể duyệt thêm vài lần nữa sẽ chậm
+// Thay vì copy rồi thao tác, JS cung ra các hàm giúp giữ tính immutable trực tiếp
 const people = [1,2,3];
 const copiedPeople = [...people];
-
-// JS cung ra các hàm giúp giữ tính immutable trực tiếp
 const people2 = people.with(2, 4).toSorted().toReversed().toSpliced(0, 1, 10);
 console.log(people2);
 
-// Node phiên bản càng cao càng hỗ trợ js version lớn hơn và tương thích browser mới. Do đó dùng js và nodejs bản thấp sẽ đảm bảo tương thích hết.
-// JS ra từ khóa using để tự clean up giá trị khi ra khỏi scope giống C# nhưng chỉ có ở phiên bản mới nhất
-
-// Thay cho array.includes
-console.log(1 in people);
-
-// JS lúc trước k có phương thức lấy phần tử cuối cùng của array, bh dùng at()
-const arr = [1,2,3];
-console.log(arr.at(-1), arr.at(-2));
-
-// Vấn đề copy object và array
-// ... chỉ giúp shallow copy. Đổi trực tiếp thì k ảnh hưởng nhưng đổi reference nested thì ảnh hưởng => Chú ý đây là lỗi rất dễ nhầm tưởng là copy được
+// Vấn đề copy object và array: ... chỉ giúp shallow copy. Đổi trực tiếp thì k ảnh hưởng nhưng đổi reference nested thì ảnh hưởng => lỗi dễ nhầm
 const bientruoc = {name: "a", test: { name: "a" }};
 const biensau = { ...bientruoc };
 biensau.name = "b";
@@ -259,10 +209,19 @@ const biensau2 = structuredClone(bientruoc);
 biensau2.test.name = "c";
 console.log(bientruoc); // k đổi
 
+// JS ra từ khóa using để tự clean up giá trị khi ra khỏi scope giống C# nhưng chỉ có ở phiên bản mới nhất
+
+// Thay cho array.includes
+console.log(1 in people);
+
+// JS lúc trước k có phương thức lấy phần tử cuối cùng của array, bh dùng at()
+const arr = [1,2,3];
+console.log(arr.at(-1), arr.at(-2));
+
 // Tối ưu
 var list1 = ["a", "b"]; var list2 = ["c", "d"];
-console.log(list1.concat(list2)); // Mảng lớn có hiệu suất kém vì sex tạo mảng mới
-console.log(list1.push.apply(list1, list2));  // Tốt hơn vì k tao mảng mới mà apply vòa list1 luôn
+console.log(list1.concat(list2)); // Mảng lớn có hiệu suất kém vì sẽ tạo mảng mới
+console.log(list1.push.apply(list1, list2));  // Tốt hơn vì k tao mảng mới mà apply vào list1 luôn
 
 ~~(1.2) // Thay thế Math.floor
 

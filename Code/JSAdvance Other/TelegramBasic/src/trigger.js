@@ -1,5 +1,3 @@
-// # Tương tác telegram / Tạo bot tự động nhắn tin vào channel sau 1 khoảng thời gian
-
 // Ở đây ta dùng type module trong package json thì dùng được import bth
 import schedule from 'node-schedule';
 import main from './main.js';

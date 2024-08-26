@@ -1,6 +1,3 @@
-// # Use pubsub 
-// Dùng fanout exchange
-
 const amqplib = require("amqplib");
 
 // .env
@@ -12,6 +9,7 @@ const postVideo = async ({ msg }) => {
     const conn = await amqplib.connect(amqp_url_docker);
     const channel = await conn.createChannel();
 
+    // Dùng fanout exchange
     const nameExchange = "video"; // K tạo queue mà tạo exchange
 
     await channel.assertExchange(nameExchange, "fanout", {

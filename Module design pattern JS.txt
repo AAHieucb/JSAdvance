@@ -1,6 +1,4 @@
 Design pattern
-Xuất phát từ Gang of Four (GoF) là 4 lập trình viên sáng lập ra 23 design pattern
-Design pattern nên được áp dụng trong phạm vi từng module của ứng dụng.
 
 Nhóm nào? Khái niệm? Tên gọi?
 Cách dùng
@@ -9,28 +7,23 @@ Ref tới
 Phân tích
 
 
-
-#***SOLID
+# SOLID
 -> S: 1 class chỉ làm 1 nhiệm vụ => hiểu sai. Đúng phải là 1 class chỉ nên có 1 lý do để thay đổi. 
-1 class thực tế có thể làm nhiều việc nhưng chỉ có 1 trách nhiệm, nếu 1 class thay đổi tức trách nhiệm của nó bị đổi. Nếu 1 class có 2 lý do để thay đổi, ta phải tách 2 trách nhiệm đó ra thành 2 class riêng. 
+1 class có thể làm nhiều việc nhưng chỉ có 1 trách nhiệm, nếu 1 class thay đổi tức trách nhiệm của nó bị đổi. Nếu 1 class có 2 lý do để thay đổi, ta phải tách 2 trách nhiệm đó ra thành 2 class riêng.
 
-- Tách logic ra 1 class riêng và gọi hàm class đó là xong
-
--> O: viết hàm sao cho sửa 1 tính năng k thuộc hàm đó thì sẽ kp sửa hàm đó.
-K được fix hard code để tránh sửa nh
+-> O: viết hàm sao cho sửa 1 tính năng k thuộc hàm đó thì sẽ kp sửa hàm đó. 
+K được fix hard code để tránh sửa nh nơi
 
 -> L: Hình vuông là hcn thì thay thế được hcn ở mọi chỗ
-
 -> I: phân tách giao diện
-
 -> D: class high level k phụ thuộc vào class low level. Cả 2 nên phụ thuộc vào abstraction.  
 
 
 
-#***Phân tích SOLID Dependency Inversion
+# Dependency Inversion
 Class high level k phụ thuộc vào class low level, interface k được phụ thuộc vào implementation
 
--> Cách code sai:
+-> Khi code sai:
 class MusicPlayer {
   private $file;
   public function __construct() {
@@ -40,21 +33,19 @@ class MusicPlayer {
     return $this->file->play();
   }
 }
-=> Class MP3MusicFile đổi tên hay đổi nội dung thì MusicPlayer cũng phải đổi theo; Khó cho unit test; Nếu MusicPlayer mở rộng chạy nhiều loại file hơn sẽ toang
-
-Việc truyền MP3MusicFile vào trong __constructor sẽ tốt hơn nhưng vẫn chưa chuẩn DI
+Nếu truyền biến file vào trong __constructor sẽ giảm phụ thuộc tốt hơn nhưng vẫn chưa chuẩn DI
+=> Class MP3MusicFile đổi tên hay đổi nội dung thì MusicPlayer cũng phải đổi theo; Khó cho unit test; Nếu MusicPlayer mở rộng nhiều loại hơn sẽ toang
 
 --> Unit test: là kiểm thử từng đơn vị
 VD: function A() {
   B(x);
 }
-=> Để kiểm thử hàm A, ta chỉ cần kiểm thử kiểu tham số truyền vào B là đúng hoặc B(x) chỉ được gọi 1 lần trong A. Ta k cần kiểm thử hàm B trong A chạy có đúng không vì unit test của hàm B phải lo điều đó
+Để kiểm thử A, chỉ cần kiểm thử tham số truyền vào B là đúng và B(x) chỉ được gọi 1 lần trong A. Ta k cần kiểm thử B trong A chạy đúng k vì unit test của B phải lo điều đó.
 Nếu hàm A nhận tham số kiểu X thì unit test phải mock biến X để truyền vào A, bắt mọi case thành công và case fail.
-
-Nếu hàm A mà dùng kiểu this->x = new X() hay còn gọi là hard dependency thì unit test sẽ rất khó vì k thể mock biến x để truyền vào được nữa, buộc phải gọi hàm để khởi tạo vì 2 cái phụ thuộc hoàn toàn vào nhau.
+Nếu hàm A mà dùng kiểu this->x = new X() hay còn gọi là hard dependency thì unit test sẽ rất khó vì k thể mock biến x để truyền vào được nữa, buộc phải gọi hàm để khởi tạo.
 Môi trường unit test phải độc lập nhưng có những TH như v sẽ khiến cho các test case phụ thuộc vào nhau hoặc ảnh hưởng ra hệ thống ngoài. VD class X là FileManager, tester sẽ k thể chạy test mà k ảnh hưởng tới hệ thống tệp được.
 
--> ***Cách code chuẩn:
+-> Cách code chuẩn:
 class MusicPlayer {
   private $file;
   public function __construct(PlayerFile $file){
@@ -72,16 +63,11 @@ class MP3File implements PlayerFile {
     return "Play MP3 file!";
   }
 }
-=> Sự phụ thuộc của 2 class đã giảm vì cả 2 cùng phụ thuộc vào 1 interface (mà interface rất khó thay đổi). Bây giờ dù đổi tên class MP3File hay thêm kiểu File mới thoải mái mà MusicPlayer k sửa gì:
-class FLACFile implements PlayerFile {
-  public function play() {
-    return "Play FLAC file!";
-  }
-}
+=> Sự phụ thuộc của 2 class đã giảm vì cả 2 cùng phụ thuộc vào 1 interface khó thay đổi. Có thể đổi tên class MP3File hay thêm kiểu File mới thoải mái mà MusicPlayer k sửa gì.
 
 
 
-#***State pattern
+# State pattern
 Thuộc nhóm behavior. Dùng khi 1 đối tượng thay đổi hành vi tùy theo trạng thái nội tại của nó. Do đó gọi là state pattern.
 
 - Mỗi state viết ở 1 class riêng và thêm từng hành vi tương ứng.
@@ -93,7 +79,7 @@ Thuộc nhóm behavior. Dùng khi 1 đối tượng thay đổi hành vi tùy th
 
 
 
-#***Strategy pattern
+# Strategy pattern
 Thuộc nhóm behavior pattern. Dùng khi có nhiều case if else để làm 1 thứ gì đó, mỗi case có 1 strategy xử lý hoàn toàn khác nhau.
 
 - Tách từng hàm xử lý ra 1 function or 1 class riêng. 
@@ -105,11 +91,11 @@ Nếu chỉ có 2 cases quá ít hay xử lý ngắn thì việc chia ra lại l
 -> ref tới "Java_OOP_SE / Design Pattern"
 -> ref tới "Project2 / ECommerce" xử lý hoàn hảo hơn cho usecase loại bỏ ifelse bằng biến mapping
 
-=> Factory pattern cũng giống strategy pattern nhưng là if else để create object mới chứ kp if else xử lý. Có thể là mỗi loại Factory là 1 class riêng để tạo instance mới và gọi hoặc register vào 1 class và gọi
+=> Factory pattern cũng giống strategy pattern nhưng là if else để create object mới chứ kp if else xử lý. Mỗi loại Factory có thể là 1 class riêng để tạo instance mới và gọi hoặc register vào 1 class và gọi
 
 
 
-#***Observer pattern
+# Observer pattern
 Thuộc nhóm behavior pattern. Dùng khi có nhiều user cùng subscribe vào 1 thứ, khi thứ đó thay đổi thì mọi user đều nhận được và perform các actions khác nhau. Các user là các Observer quan sát sự thay đổi.
 
 - Publisher add các observer vào 1 list trong nó. Khi phát sự kiện, nó gọi hàm xử lý của các observer là xong.
@@ -151,7 +137,7 @@ Thực tế kp 1m người sẽ tạo socket tới ronaldo. Mỗi người chỉ
 
 
 
-#***Chain of Responsibility Pattern
+# Chain of Responsibility Pattern
 Thuộc nhóm behavior. Dùng khi 1 hành động buộc phải đi qua hàm xử lý của nhiều class. Chain of Responsibility cho object đi qua 1 chuỗi các class xử lý liên tiếp nhau và cho ra kết quả cuối. 
 
 Nó khác với Strategy Pattern vì không phải check if else rồi đi vào handler nào, mà object buộc phải đi qua 1 chuỗi các class handler và class đó quyết định có xử lý hay không, có thể phải xử lý bởi 2 hay nhiều handlers.
@@ -169,7 +155,7 @@ Hàm xây chuỗi handler có thể làm thành 1 class riêng. Nó tương đư
 
 
 
-#***Template pattern
+# Template pattern
 Thuộc nhóm behavior. Dùng khi nhiều class có chức năng tương đồng, và chức năng đó là 1 quy trình dài cần nhiều hàm. Template tạo bộ khung cho chức năng đó. 
 
 - Viết 1 template class có đủ hàm của chức năng.
@@ -185,7 +171,7 @@ Trong microsoft company dùng Template pattern rất nhiều. Vì có nhiều cl
 
 
 
-#***Facade pattern
+# Facade pattern
 Thuộc nhóm Structural. Một quy trình xảy ra gồm sự tham gia của nhiều subsystem (class) thì nên tạo 1 class chung chứa các subsystem để thực hiện quy trình đó. Facade(bề ngoài), tức ta cung ra 1 class gom tất cả các class xử lý phức tạp lại và thực hiện trong đó rồi cung interface ra ngoài thôi. 
 
 - Trong 1 luồng xử lý phức tạp cần 5 class, ta tạo ra 1 class Facade chứa 5 biến 5 class đó rồi gom hết xử lý trong hàm handle, cung interface chứa hàm handle ra là xong.
@@ -264,7 +250,7 @@ VideoFile result = facade.convertVideo("video.avi", "mp4");
 
 
 
-#***Proxy Pattern
+# Proxy Pattern
 Thuộc nhóm Structural. Dùng khi ta cần quản lý việc truy cập tới đối tượng thực. Vd ta thường check type hợp lệ hoặc đủ quyền mới gọi hàm xử lý thực. Hàm xử lý thực k chỉ tập trung xử lý chứ k làm các vc đó, mà class Proxy được ủy quyền mới làm việc điều hướng, tổng hợp lên object cuối cùng rồi gọi xử lý thực.
 
 - Tạo class ProxyHandler chứa biến RealHandler. Nó check các thứ trước khi gọi hàm của RealHandler
@@ -273,7 +259,7 @@ Thuộc nhóm Structural. Dùng khi ta cần quản lý việc truy cập tới 
 
 
 
-#***Adapter Pattern
+# Adapter Pattern
 Thuộc nhóm Structural. Dùng khi ta muốn chuyển đổi giao diện của 1 lớp thành 1 giao diện khác được mong đợi bởi client. Adapter chính là lớp trung gian chuyển đổi giúp tương thích với class gốc. 
 VD: Youtube chỉ cho thanh toán bằng thẻ Visa, nhưng phía client k có Visa mà chỉ có Momo. Thay vì chỉnh sửa phía client bắt phải có Visa, ta tạo class MomoAdapter chuyển đổi giao diện cho phép thanh toán bằng Momo phía client. Đây là bài toán thực và có thể giải quyết bằng "Cách tạo dịch vụ Visa ảo từ Momo".
 
@@ -299,7 +285,7 @@ Trong web2 k chắc về slippage thì nên chủ động yêu cầu cộng 1 l�
 
 
 
-#***Bridge Pattern
+# Bridge Pattern
 Thuộc nhóm Structural. Dùng khi muốn tách phần abstraction và implementation ra để phát triển độc lập với nhau. Class này chỉ giúp đưa ra 1 cấu trúc giúp phân tách ra từng phần, dễ bảo trì và tái sử dụng, k giúp xử lý logic
 
 Ví dụ: ta có 2 table product và order. Đôi lúc product ta truy cập bằng MySQL, đôi lúc order ta truy cập bằng PostgreSQL và ngược lại.
@@ -318,12 +304,12 @@ Trong dự án C# có dùng pattern này. Đó là class Repository xử lý t�
 
 
 
-#***Object Pattern cũng chỉ là khử if else bằng cách chia nhỏ thuộc tính trong từng cục if else thành 1 class riêng
+# Object Pattern cũng chỉ là khử if else bằng cách chia nhỏ thuộc tính trong từng cục if else thành 1 class riêng
 Kp lúc nào cũng dùng được vì chia nhỏ quá không tốt, nhiều lúc 1 class vẫn phải nhận nhiều thuộc tính và buộc phải if else thuộc tính đó bằng cj mà xử lý. VD 1 trường có 10 giá trị, ta k nên chia ra 10 class chỉ vì trường đó thì đúng là dở
 
 
 
-#***Decorator Pattern
+# Decorator Pattern
 Decorator Pattern thuộc nhóm structural. Dùng khi cần mở rộng tính năng của 1 đối tượng mà k đổi đối tượng gốc đã có
 
 - Tạo hàng loạt class Decorator kế thừa chồng chéo và kế thừa class gốc. Implement các thay đổi 1 cách độc lập nhau. Nó kế thừa và nhận biến trong constructor để giữ đúng loại biến là class gốc
@@ -337,7 +323,7 @@ Nếu ta không làm v thì nó chả khác nào kế thừa bth. VD mở rộng
 
 
 
-#***Prototype pattern
+# Prototype pattern
 Thuộc nhóm creational. Dùng khi cần tạo nhiều đối tượng gần giống nhau, khi clone 1 object thành 1 object khác nhưng chỉ đổi 1 vài trường.
 
 - Sử dụng hàm clone ở internal mọi class luôn và con gọi clone của cha nếu có kế thừa, dùng ép kiểu
@@ -349,7 +335,7 @@ Mé trong JS k có hàm clone mà dùng Object.create(<object cần clone>); nê
 
 
 
-#***Builder Pattern
+# Builder Pattern
 Thuộc nhóm Creational. Khi tạo ra 1 đối tượng nào đó mà phải xây từng bước rất nhiều thứ. Mỗi builder có thể xây cùng 1 thứ nhưng theo nhiều cách khác nhau.
 => Builder pattern đem lại cho ta cấu trúc code tốt nhất cho việc này.
 
@@ -361,13 +347,7 @@ Nhược điểm: chỉ dùng khi xây 1 đối tượng mà từng trường c�
 
 
 
-# Singleton
-Thuộc nhóm Creational. Dùng khi cần tạo 1 instance global duy nhất truy cập được ở mọi nơi
-
-
-
-## Bổ sung
-#***Mediator Pattern
+# Mediator Pattern
 Nhóm behavior. Khi nhiều đối tượng khác nhau tương tác với nhau, ta cho tương tác qua class Mediator để giảm sự phụ thuộc trực tiếp giữa các đối tượng
 
 - Tạo class Mediator register các đối tượng vào
@@ -378,7 +358,7 @@ Có thể thêm bớt đối tượng dễ dàng. Cần tránh để class Media
 
 
 
-#***Factory pattern
+# Factory pattern
 1) Simple Factory Pattern: kp chuẩn của GoF nhưng vẫn được dùng vì đơn giản và dễ nhìn, dùng khi không có quá nhiều class.
 public class SimpleFactory {
   public static Product createProduct(String type) {

@@ -1,8 +1,5 @@
-// # Use pubsub / Dùng topic exchange
-
 const amqplib = require("amqplib");
 
-// .env
 const amqp_url_docker = "amqp://localhost:5672";
 
 const receiveMail = async () => {
@@ -11,7 +8,7 @@ const receiveMail = async () => {
     const conn = await amqplib.connect(amqp_url_docker);
     const channel = await conn.createChannel();
 
-    // Xđ exchange
+    // Dùng topic exchange
     const nameExchange = "send_email";
     await channel.assertExchange(nameExchange, "topic", {
       durable: false

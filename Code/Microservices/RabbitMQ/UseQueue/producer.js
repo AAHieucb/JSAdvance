@@ -1,9 +1,7 @@
-// # UseQueue
 // Dùng durable, persistent, noAck, expiration, prefetch
 
 const amqplib = require("amqplib");
 
-// .env
 const amqp_url_cloud = "amqps://mxbbqaeb:tOPwP2Fwtxvtql-V9i3NbtA-nxEnJmZD@armadillo.rmq.cloudamqp.com/mxbbqaeb";
 const amqp_url_docker = "amqp://localhost:5672";
 

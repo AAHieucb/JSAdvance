@@ -1,0 +1,77 @@
+JSAdvance
+
+
+# Dùng Map thay if else và switch case:
+if else là cấu trúc bậc thang
+switch case nhanh hơn if else đáng kể khi số lượng điều kiện lớn. Mỗi điều kiện k phụ thuộc vào điều kiện trước đó nên thực hiện như mạch logic sẽ nhanh hơn.
+=> Tuy nhiên trong Js khi muốn search theo key nên dùng new Map là nhanh nhất. Map là 1 instanceof Object nhưng sinh ra để search nhanh hơn, nên dùng thay thế
+
+
+
+# Backend for Frontend (BFF) Pattern
+Là mô hình thiết kế dùng 1 server riêng tối ưu cho FE dễ call API. 
+Mỗi loại UI page nên có 1 BFF riêng. VD mobile có thể bỏ đi 1 vài dòng text hay ảnh thì response từ server có thể trim bớt để tối ưu.
+
+Browser có giới hạn số lượng API call vào 1 domain tại cùng 1 thời điểm. VD với chrome mặc định là 6 requests 1 lúc. Vd web có trang dashboard cần FE gọi 18 API 1 lúc và xử lý sẽ lag, ta nên dựng 1 BFF cung 1 API cho FE gọi, bên trong gọi 10 API (Promise.all) và trả ra kết quả đã xử lý cho FE, tốc độ sẽ nhanh hơn 3 lần. FE chỉ cần lo render lên UI.
+VD: NextJS client ---Call BFF---> NextJS API ---Call---> 10 API services in server.
+=> Thực tế chỉ dùng khi tiện (SSR) hoặc gặp vấn đề về hiệu suất. Với case đơn giản có thể viết API gom ở ngay server gốc được.
+
+
+
+# Microservice basic
+Mô hình chia ra ứng dụng lớn thành nhiều module nhỏ, thay vì để nguyên khối. Các mô đun có thể được viết bằng nhiều ngôn ngữ khác nhau và tương tác thông qua API. Vì mỗi mô đun chỉ lo các tính năng riêng nhỏ nên code đơn giản.
+
+Ngày xưa: Đặt hàng ---> Xử lý [100ms có hàng] ---> Mua hàng
+Ngày nay: Đặt hàng --> Xử lý [100ms check giảm giá] [200ms tích điểm] [100ms hội viên] [...] --> Mua hàng
+=> Thao tác đặt hàng có thể xử lý mất tới vài giây thay vì tức thì như trước. Do đó các hệ thống lớn tối ưu thông qua microservices, khiến nó trở thành:
+Đặt hàng --> Xử lý [100ms] --> Mua hàng
+            |  |     |    \ 
+            v  v     v      v
+      [100ms][200ms][100ms] [...]
+
+VD ActiveMQ, RabbitMQ giúp triển khai mô hình MessageQueue cho microservices => Database, cache, messsagequeue là 3 loại storage lưu data buộc phải có trong các hệ thống lớn. 
+
+
+
+# Sử dụng redis pubsub
+User đặt hàng sẽ xử lý tính giá và gửi mail và trả lại kết quả cho user. Server trả kết quả ngay lập tức còn 2 services kia thực hiện bất đồng bộ đồng thời ở 2 ứng dụng riêng.
+Việc dùng message queue mới thực sự là microservice. Còn redis pubsub chỉ là 1 cách để các service giao tiếp với nhau, 1 cách tương đương với việc gọi API thôi.
+
+Các subscriber và publisher tương tác qua channel của redis: Có thể dùng rdcli để làm pubsub test trước khi code vì mọi lệnh trong code đều có thể làm bằng cli và ngược lại.
+- Mọi publisher chạy tức thì, độ trễ thấp. Độ tin cậy thấp, chỉ dùng khi giao tiếp nhanh và k cần xác nhận, k cần lấy kết quả.
+- Chỉ dùng với hệ thống lượng request ít. VD có 1000 user cùng request làm nó bắn 1000 sự kiện 1 lúc sẽ rất dễ mất message.
+- Tính cô lập cao, subscriber và publisher k biết gì về nhau nên cũng dễ dàng thêm hàng loạt subscribers. Còn gọi bằng API thì phải biết, cứ thêm 1 subscriber thì phải sửa publisher thêm hàm gọi.
+
+
+
+# Các mô hình microservice với API Gateway
+API Gateway cũng chỉ là 1 cục trung gian xử lý các thứ, coi là 1 loại reverse proxy thôi. Nó là 1 endpoint duy nhất mà khách hàng giao tiếp, giúp che giấu sự phức tạp của kiến trúc microservices bên dưới.
+
+-> Direct Client-To-Microservices: Client App[Mobile, web] ---> [Microservice1 chạy container WebAPI, Microservice2 WebAPI, Microservice3 WebAPI]
+=> Client phải gọi trực tiếp qua API gặp nhiều vấn đề
+
+-> 1 API gateway
+Mobile ----------------------------------> |             | ---> Microservices WebAPI1
+WebApp ----------------------------------> | API Gateway | ---> Microservices WebAPI2
+Traditional Web HTML <---> Server MVC _______/^            ---> Microservices WebAPI3
+
+-> Multiple API gateway BFF
+Mobile ---------------------------> API Gateway Mobile ___> [Microservice1, Microservice2, Microservice3]
+WebApp ---------------------------> API Gateway Web ___________/^
+Traditional Web <---> Server MVC ______/^      
+
+-> API gateway khác load balancer về phạm vi:
+Load balancer chỉ làm công việc phân phối tải khi dịch vụ được duplicate ở nhiều nơi để giảm tải cho 1 server đỡ xử lý quá nhiều request.
+API gateway điều hướng request tới các dịch vụ khác nhau. Các dịch vụ này có thể cùng 1 server or ở các server riêng. 
+
+VD có thể để api gateway xác thực, ghi log, bảo mật, cache nữa. Còn server chỉ xử lý logic core bên trong thôi.
+VD reverse proxy có thể chặn DDoS nhưng API gateway thường k làm
+
+-> VD API Gateway: mọi công việc trước khi thực sự xử lý ở các hệ thống riêng đều qua API gateway => ref tới "APIGateway.gif"
+Call http request -> API gateway bắt đầu bằng việc validate request -> chạy allow-list/deny-list check chỉ request đúng mới qua -> APIGateway làm việc với identity provider để authen và authorization -> check rate limit, nếu quá rate limit sẽ bị reject -> Dynamic routing thông qua path matching cái request để tìm đúng service thực hiện request -> transform request thành protocol hợp lý và gửi trả cho backend microservice thực hiện -> song song với việc thực thi đó, api gateway cũng check error (qua hệ thống log monitor với ElasticSearch) và tăng tốc với cache data (qua redis).
+
+-> Tạo API gateway bằng nodejs
+Có package npm express-gateway giúp chạy gateway cho server express nodejs luôn
+Config file yaml để phân phối request của người dùng đến các url xử lý dịch vụ khác nhau
+
+

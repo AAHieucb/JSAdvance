@@ -1,0 +1,43 @@
+# Hiểu về datatype
+Kiểu dữ liệu nguyên thủy là kiểu có kích thước cố định, được lưu trong ngăn xếp cố định để truy cập theo giá trị cải thiện tốc độ truy vấn biến. 
+Kiểu dữ liệu tham chiếu là kiểu có kích thước thay đổi nên phải lưu trên heap và truy cập theo địa chỉ reference nên tốc độ truy vấn biến chậm hơn, như array, object.
+=> Biến class trong C# lưu trên heap cũng giúp C# garbage collector tự động thu gom rác trên heap, giải phóng bộ nhớ khi k còn tham chiếu mà k cần quan tâm đến phạm vi sử dụng (khi không còn biến nào trên stack reference tới nó nữa)
+
+
+
+# Các môi trường trong 1 dự án 
+- 1 là production là môi trường k thể debug, chỉ có thể theo dõi log, là nơi khách hàng chạy, chỉ có thể hotfix hoặc tạo release mới
+- Môi trường CI hiếm dùng là môi trường gần giống như production để test upgrade mà 1 phát up bản release mới luôn từ release cũ, data cũ và mới phải đồng bộ
+- 2 là môi trường QA là môi trường có thể debug, sử dụng data thực của các QA để chạy tìm lỗi, test case 
+- 3 là development là môi trường chung của hàng loạt dev, giống môi trường QA nhưng data của dev nên tùy biến thoải mái
+- Môi trường cá nhân, mỗi người 1 data custom, code bất cứ thứ gì mà k ảnh hưởng tới ai. Có thể setup docker thay thế cho mọi connect remote và code độc lập.
+=> Các bước setup đổi môi trường nên thật là dễ dàng, gom chung 1 file duy nhất, tách biệt chạy với docker các thứ
+
+
+
+# Bảo mật E2E
+HTTP là truyền tin bị MITM attack
+HTTPs cản được vì thông tin truyền đi bị mã hóa khi thiết lập SSL connection với server. Nhưng như v server vẫn nhìn thấy nội dung data và biết thông tin nhạy cảm của user
+
+Giao thức E2E giải quyết vấn đề: 2 users trao đổi pubkey qua server, mỗi user dùng pubkey của người kia để mã hoá trước khi gửi tới server, server chỉ forward tin tới đích.
+=> Hacker tấn công server cũng k biết được message là gì, user phải nhớ mật khẩu mới xem được lịch sử tin nhắn.
+
+
+
+# Usecase đồng bộ vào elastic search
+Usecase postgreSQL đang có data, nhưng để tối ưu tốc độ truy vấn, ta phải đồng bộ vào elastic search. Đơn giản chỉ cần chạy job query data từ DB insert vào elastic search. 
+
+VD có 1 trăm triệu rows cần đồng bộ sẽ buộc mọi query db đều phải dùng index. Nhưng query plan trong DB tối ưu như nào, nhiều lúc ta k kiểm soát được, nếu quá lâu thì cần check từng lệnh để fix. Thậm chí có lệnh ta đánh index rồi nhưng nó không dùng, MySQL chạy index nhưng sang PostgreSQL cùng query nhưng lại éo dùng, phải check mới biết được.
+Lệnh "EXPLAIN (ANALYZE, BUFFERS) <query>" sẽ giải thích chi tiết 1 query, nếu có query không dùng INDEX COND mà dùng FILTER tức duyệt hết thì phải sửa. Tham số BUFFER luôn dùng để cung thêm thông tin qtr về data. Khi thực hiện, DB tự động lưu buffer để tối ưu, thông số buffer shared hit báo ta lưu nhiều như nào.
+
+Chú ý khi dùng OR trong db với data quá lớn or đk phức tạp, PostgreSQL có thể thực hiện FULL TABLE SCAN và loại bỏ đi rows k thoả mãn, thay vì dùng index. Có thể fix bằng cách tách queries, đổi sang dùng UNION, gộp so sánh trong tuple.
+URL: https://mattermost.com/blog/making-a-postgres-query-1000-times-faster/
+
+
+
+# Khi cần gọi quá nhiều API 1 lúc
+Có thể viết để cho max 3 request chạy 1 lúc tránh quá tải server hoặc lỗi ratelimit hoặc lỗi bị server chặn nếu gọi bên thứ 3.
+Trong browser có sẵn cơ chế giới hạn số lượng request chạy đồng thời rồi, nên làm ở FE k mang nhiều ý nghĩa
+Tạo BFF 
+
+

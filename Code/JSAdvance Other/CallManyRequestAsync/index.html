@@ -1,5 +1,6 @@
 <body>
   <script>
+    // Khi FE cần gọi quá nhiều request 1 lúc
     const concurrencyRequest = async (urls, maxNum) => {
       if (urls.length === 0) {
         return Promise.resolve([]);

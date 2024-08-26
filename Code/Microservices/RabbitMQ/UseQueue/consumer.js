@@ -22,7 +22,7 @@ const receiveQueue = async () => {
       // Xử lý xong, consumer sẽ gửi lại queue noAck. false thì queue k xóa message; true là queue xóa message luôn. Default là false.
     });
     
-    // // Cú pháp khác
+    // Cú pháp khác
     // await channel.consume(nameQueue, (msg) => {
     //   console.log("MSG::", msg.content.toString());
     //   channel.ack(msg);

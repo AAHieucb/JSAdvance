@@ -74,4 +74,3 @@ Call http request -> API gateway bắt đầu bằng việc validate request -> 
 Có package npm express-gateway giúp chạy gateway cho server express nodejs luôn
 Config file yaml để phân phối request của người dùng đến các url xử lý dịch vụ khác nhau
 
-

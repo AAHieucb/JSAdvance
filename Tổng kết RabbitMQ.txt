@@ -30,17 +30,6 @@ RabbitMQ chịu được tầm 10k request, thông lượng yếu hơn so với 
 
 
 
-# Update đồng bộ cache database
-Nếu hệ thống ít user thì k cần cache, chỉ xét trường hợp nhiều người dùng đồng thời. Cache luôn phải đồng bộ data với db gốc, khi write sẽ update cả cache và db, khi read sẽ đọc trong cache, không có thì đọc trong DB rồi update vào cache. Nhưng các quá trình đó kp transaction nên bị sai khi nhiều người read/write or write/write đồng thời.
-Khi cần update data trong cache thì delete thay vì gán 1 giá trị rỗng hoặc update thủ công cho nó vì lệnh xóa nhanh gọn, tiết kiệm bộ nhớ và tốt hơn lệnh set về tính nhất quán. Cache sẽ tự động được update ở lần get đầu tiên của user.
-
-VD1 A write, B read: A del cache chứ k set cache, sau đó update db. Đồng thời B read cache k có sẽ read DB có data cũ r update cache. Lúc này A mới update database thì DB và cache khác dữ liệu nhau.
-VD2 A write, B write: giả sử cả 2 set cache chứ k del cache. A set giá trị cache. B set giá trị cache. B update DB. Lúc này A mới update DB thì bị sai vì A và B update sai thứ tự
-=> Để giảm lỗi, ít nhất là ta phải luôn set db trước rồi mới update cache. Nó đảm bảo database gốc được update đúng thứ tự nhưng vẫn chưa đủ tốt, VD case2 bên trên vẫn có thể bất đồng bộ data vì cache và db k update trong cùng 1 tx. 
-=> RabbitMQ ra đời cũng giúp database và cache được đồng bộ chuẩn hơn. VD 2 request ta đều cho vào MQ, mỗi request sẽ update db thành công thì update cache tiếp, xong mới gửi ack để lấy request tiếp từ queue ra xử lý tuần tự. TH đơn giản có thể tự implement mutex locking ở server thủ công để 2 hàm udpate là atomic.
-
-
-
 # Messaging pattern trong RabbitMQ
 1) Message Queue: Producer gửi message vào 1 queue cụ thể và consumer nhận xử lý message đó bất đồng bộ. Mỗi message chỉ được xử lý bởi 1 consumer và đảm bảo tính có thứ tự.
 Producers ---> Message Queues ---> Consumer

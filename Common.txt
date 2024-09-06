@@ -41,3 +41,29 @@ Trong browser có sẵn cơ chế giới hạn số lượng request chạy đ�
 Tạo BFF 
 
 
+
+# Fuzzy search alg
+Thuật toán tìm kiếm gần đúng trên 1 list. Nhận vào 2 string và trả ra độ so khớp match nhau không.
+Để search tự sửa lỗi chính ta, implement thêm spell corrector chấp nhận chuỗi đích có độ so khớp ở 1 mức thấp là được.
+Ngoài ra còn có: Levenstein Distance Algorithm, N-gram Algorithm, BK Tree Algorithm, Bitap Algorithm
+
+-> Naive Algorithm: duyệt 2 vòng for tìm input xuất hiện trong chuỗi đích trong list thì match. Tức chuỗi tìm kiếm phải liền nhau exactly đúng thứ tự.
+
+-> Hamming Distance Algorithm: input là 2 chuỗi cùng kích thước, cho ra số lượng ký tự k khớp nhau. 
+Thuật toán giúp tìm gần đúng chuỗi đích nhưng nhược điểm là chuỗi phải cùng độ dài, nếu k cùng độ dài sẽ k luôn k khớp nên kém linh hoạt trong trường hợp ký tự thêm bớt ký tự
+
+-> Levenshtein Distance (Edit Distance): đo sự khác biệt giữa hai chuỗi bằng cách đếm số lượng các phép chèn, xóa, thay thế cần thiết để biến chuỗi này thành chuỗi kia.
+Thuật toán tốt giúp sủa lỗi chính tả chuẩn
+
+=> Nếu muốn tìm kiếm một chuỗi ngắn trong một danh sách các chuỗi rất dài sẽ phải duyệt qua từng chuỗi dài và so sánh chuỗi ngắn với các đoạn con của chuỗi dài. Việc này rất chậm và cần tiền xử lý nhiều thứ, khi gặp case này, ta thường dùng các công cụ như Elastic Search chứ k tự implement, Elastic Search có hỗ trợ fuzzy search nhé. 
+
+
+
+# QPS
+-> Định luật 80/20 là 80% request trong 1 ngày rơi vào 20% thời gian. Nếu hệ thống có 2M request/ngày thì cần bnh QPS và nếu 1 server chịu được 60 QPS thì cần bnh server? 
+QPS là số lượng query 1s. Response time là thời gian request đi và về. TPS là transaction per second. VD 1 TPS có 2 QPS tức 1 transaction query tới server 2 lần.
+Server của ta cần xử lý được tải lúc giờ cao điểm mới được: 2M request * 80% = 1.6M request
+86400 * 20% = 17280s tức 1.6M request rơi vào 20% thời gian là 17200s
+QPS = 1.6M request / 17200s = 93 request/s => Cần 2 server hoạt động giờ cao điểm để chạy mượt mà.
+
+

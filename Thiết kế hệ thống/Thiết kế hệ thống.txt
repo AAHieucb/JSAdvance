@@ -1,0 +1,221 @@
+# Basic
+-> Thực tế NodeJS kp là lập trình front-end hay backend gì cả mà là do package của nó quyết định. VD package express giúp lập trình server, còn lệnh node file.js thực chất là lệnh chạy file js bình thường. Tức nói backend làm bằng NodeJS thực tế là dùng các package server của NodeJS để tạo backend cho website. Tương tự react cũng chỉ là 1 package của NodeJS để tạo front-end. Khi lập trình backend của NodeJS ta có thể viết ra các file front-end html, css và config cho server gửi lại các file này khi request cái gì. Thì các file đó thực chất là front-end luôn tức là lập trình front-end và backend cùng lúc luôn (SSR truyền thống). Khi đó họ gọi là website nodejs. Nhưng trong thực tế ít các website nodejs mà người ta thường tách riêng lập trình front-end ra 1 package phổ biến là create-react-app. Còn server trên NodeJS chỉ lo các vấn đề về logic api data và database mà thôi (mô hình AJAX)
+
+-> Hosting public: Nếu k có mạng, chỉ vào được 1 máy local. Nếu chạy app network local, mọi máy trong network đó vào được. Nếu hosting public, mọi máy trên thế giới vào được.
+VD code react, SQL db, nodejs express server thì phải host cả 3 cái đó lên. 3 cái sẽ tương tác cần authen và bảo mật SSL đường truyền. Trừ khi cài server và db cùng 1 máy.
+
+Có thể cấu hình router wifi để biến máy ta thành server public. 
+Nhiều mô hình cung các server chuyên dụng đã publish sẵn có domain mà ta chỉ cần connect vào là dùng được terminal của họ, upfile server lên và chạy code trên máy đó remotely
+
+-> Có NodeJS không mà k có nginx vẫn chạy được bình thường, còn có nginx mà k có server NodeJS thì chỉ serve được web tĩnh.
+Thường dùng nginx/apache làm cân bằng tải nếu có nhiều server, làm reverse proxy nếu chỉ có 1.
+
+-> TK các mô hình web:
+Mô hình 1: Client Browser -> hosting[Load Balancer Nginx -> NodeJS Express Server -> Database(SSMS -> SQL Server)]
+
+Mô hình 2: Client Browser --SSL--> VPS[Nginx -> PM2 -> Serve{HTML, CSS, JS, IMAGE}]
+
+Mô hình 3:
+Client Browser -> Nginx reverse proxy -> apache <--HTML--> [PHP <-> Database Server] 
+                      |
+                      v
+                  Static content
+
+Mô hình tối thiểu web tĩnh thì chỉ có: Browser -> Hosting[Nginx webserver -> file tĩnh setup trong nginx]
+=> Nhiều mô hình kết hợp phức tạp các thành phần khác nhau.
+
+-> TK các thành phần:
+SSL chứng chỉ có thể self sign or mua or tạo ra bằng các phần mềm như certbot.
+
+Hosting:
+Dùng VPS có thể mua or đăng ký miễn phí bị giới hạn. VD: Google Cloud Plarform, AVA VPS,.. Hosting qua VPS bình thường sẽ nhận được tài khoản mật khẩu và phải tạo liên kết SSH để ta code trên máy server đó từ xa.
+Shared Host
+Hosting online tương tác qua UI như firebase hosting nosql, hosting FE bằng cách tải file lên.
+Nhiều cloud hosting như Heroku, Google Cloud, AWS Amazon,.. => điểm lợi là phân bố nhiều nơi trên thế giới khi lưu lượng truy cập cao từ nhiều quốc gia
+Hosting bằng server vật lý riêng or dùng laptop cá nhân cấu hình router cục wifi. Khi đó phải cấu hình có thể dùng nginx or apache để cấu hình host. Phải có static IP address. 
+
+PM2 là package giúp khởi động lại dự án khi VPS bị restart hay app bị crash, thg dùng khi hosting bằng VPS trong dự án NodeJS
+
+Reverse Proxy nhận yêu cầu máy khách và chuyển lên server cũng như gửi phản hồi từ server tới client. Nginx có thể làm reverse proxy
+
+Webserver lo xử lý logic request của client, tương tác với server database, api. Như Apache chỉ xử lý http request, NodeJS làm cả thao tác với database. Đương nhiên là Apache k tương tác với database nhưng ta vẫn có thể kết nối hệ thống với database VD sử dụng khối PHP
+
+PHP thường dùng khi dùng apache làm webserver thì khối này sẽ lấy dữ liệu từ database server và gửi lại dạng HTML. PHP Handler phải xử lý hết
+
+DBMS cái giúp tương tác với database server như SSMS
+
+Database Server lưu data thực tế trên máy vật lý như SQL Server
+
+=> Còn có nhiều thứ khác như DNS Server, CDN Server, Service khác,.. trong quá trình hoạt động cũng đi qua.
+Docker k liên quan chỉ là thứ giúp chạy trên nền tảng bất kỳ. VD đang dùng máy win mà muốn ứng dụng như chạy trên Linux thì tải image linux của nó về và dùng các tool ngay trên container của image đó
+Còn có các tool khác như Serve (chỉ là 1 cái live server) để chạy client local ở 1 cổng, nơi mà nếu gửi request đến cổng đó thì nó sẽ trả về file html tương ứng của dự án thay vì bắt request ở cổng 80 và gửi lại file gì thì ta forward đến cổng đó xử lý
+
+-> Virtual Host là cách dùng nhiều địa chỉ domain trên 1 IP Server duy nhất. Vì 1 server lớn có thể serve nhiều web, mỗi web có 1 domain khác nhau mà lại chung 1 IP. Dùng Virtual Host sẽ chia nhiều domain đường link khác nhau để người dùng vào các web khác nhau cùng host bởi 1 server chạy nginx được
+=> Điều này cũng có nghĩa ta có thể dùng 1 VPS host 1 web nodejs kèm 1 web react tĩnh ok hết, thông thường họ tách server và FE ra 2 máy.
+
+
+
+# Thiết kế hệ thống basic
+Client - Server - Database
+
+-> Vertical scaling tức tăng RAM, ổ cứng, thay CPU. Hoặc dùng horizontal scaling là dùng thêm các server tương đương và phân bố bằng LoadBalancer(cân bằng tải), 1 server chết thì hệ thống vẫn hoạt động
+Request of Client -> Load Balancer -> phân chia đến nhiều webserver khác nhau ---lấy tiếp từ---> 1 Database
+
+-> Tăng số lượng DB
+TH1: đọc nhiều ghi ít => kiến trúc master/slave
+Webserver <--đọc-- slave1
+          --viết--> master
+          <--đọc-- slave2
+=> master luôn đồng bộ với slaves.
+
+TH2: đọc nhiều ghi nhiều (VD các tính năng comment, chat,..) -> Sharding Database
+Đây là pp chia nhỏ theo vùng miền tức người việt nam truy cập đến database ở VN, Mỹ truy cập đến database ở Mỹ. Mỗi database gọi 1 shard. Vc chia như v giúp mở rộng chiều ngang + nếu 1 database hỏng, các database khác vẫn hoạt động + tối ưu hóa truy vấn tới DB cụ thể thay vì gọi tới 1 database rất lớn chứa tât cả mọi thứ ở 1 vị trí xa
+Vấn đề với PP này là làm sao để 1 query biết nên gọi tới DB nào, có 3 cách giải quyết:
+- Gắn thêm key vào request, key đó chứa thông tin database muốn query
+- Range base: mỗi cụm database có 1 khoảng. Vd data của ta lưu dữ liệu theo khoảng thời gian: Từ năm 2001-2005 lưu ở database A, từ 2005-2010 lưu ở database B,... Nếu chia được kiểu tương tự như v thì check request cần data thuộc khoảng nào mà gọi database tương ứng thôi.
+- Dùng lookup table là 1 metadata shard đặc biệt lưu ánh xạ data trong request tới database nào. 
+=> PP tuy hay nhưng Vd nếu data cần query tới nhiều shard khác nhau thì sẽ tốn query và việc lấy data bị phức tạp.
+
+-> Tổng quan:
+Browser <--> LoadBalancer <--> Web Server <--> Database server
+ ^  ^                            ^  ^  ^
+ |  |                            |  |  |
+ |  v                            |  |  v
+ v CDN(Content Delivery Network) |  v Service(api,aws,dịch vụ ngoài,..)
+DNS(Domain Name System)          v Job Server
+                                Caching Service(Redis, Memcache)
+
+CDN: mạng lưới nội dung tĩnh trên các server đặt khắp nơi để request của user tự tìm đến máy chủ chứa nội dung gần nhất thay vì tìm đến máy chủ gốc
+Caching Service: lưu kết quả hay data trong RAM, ít bị thay đổi tăng trải nghiệm người dùng
+Job Server: thực hiện tác vụ bất đồng bộ (gửi tin, tải video, import CSV)
+
+-> Mô hình LAMP(Linux Apache MySql PHP): Linux môi trường; Apache là 1 reverse proxy server để xử lý các yêu cầu từ client forward request tới PHP server; Mysql là cơ sở dữ liệu cho thông tin web; PHP xử lý để kết nối MySQL để xử lý data rồi trả lại cho Apache dạng html r trả lại client
+Client Browser <-> Server Linux[Apache <-> PHP <-> MySQL]
+VD: Nhập địa chỉ vào trình duyệt là http://www.example.com/login.php thì trình duyệt sẽ biết là gửi yêu câu đến địa chỉ http://www.example.com và xin tải trang login.php -> web server tại địa chỉ đó nhận được yêu cầu đọc login.php -> web server(apache) đọc file login.php từ ổ cứng lưu trữ host -> host trả về và webserver nhận ra nó là php chứ kp html hay ảnh nên sẽ gửi lại file đó cho module php xử lý (biên dịch và xử lý logic) -> PHP chạy các dòng mã PHP nhận được từ apache và trong đó nó lại yêu cầu truy cập cơ sở dữ liệu MySql để lấy data -> module PHP tiến hành kết nối với MySQL và gửi cho MySQL truy vấn -> MySQL xử lý query và gửi lại data cho PHP -> PHP hoàn thanh chạy code và trả lại kết quả cho Apache là đã xử lý xong dạng .php -> Apache trả lại cho trình duyệt dạng mã HTML để trình duyệt dựng nội dung đó ra màn hình
+
+
+
+# Thiết kế mở rộng dần hệ thống cực lớn
+-> Đi từ mô hình basic ít người dùng: Website[Frontend - Backend - Database] SSR chung 1 http server duy nhất, thậm chí cả database cũng chung luôn trên máy chủ web
+
+-> Về sau mô hình AJAX ra đời mới tách độc lập: Database <-> Server <-> Client làm kiến trúc trở nên phân tán dần
+Ta cần dùng Rate Limit giới hạn request 1 user tới server để tránh DDoS 1 ip gửi quá nhiều request
+
+-> Để các file tĩnh trong cùng server database sẽ die server vì file tĩnh được request nhiều bởi nhiều người dùng, để riêng 1 con server khác cũng có thể chết con server đó. Ta có thể dùng các dịch vụ lưu trữ đám mây gọi là BLOB storage như Azure Blob storage, AMZ S3. Và có thể dùng 1 dịch vụ CDN như Cloudflare, Google Cloud CDN để giảm tải. Nó cũng kbh chết vì tự phân tán ra server nhiều nơi trên thé giới và user tự request tới server gần nhất.
+
+-> Dù tách được file tĩnh nhưng server API vẫn treo nếu nhiều người dùng. Có thể nâng cấp theo chiều dọc như tăng RAM CPU DISK nhưng kp giải pháp vĩnh viễn. Ta có thể nâng cấp ngang bằng cách thêm các máy chủ khác nhau. 
+Khi mở rộng ngang, tùy yêu cầu routing mà nên dùng Load Balancer ở mức DNS. Nhưng hệ thống chưa quá to thì k cần đến mức đấy mà chỉ cần 1 Reverse Proxy
+
+--> Cơ chế của Forward Proxy và Reserve Proxy:
+Forward Proxy là cái trong 1 tổ chức ta điền vào để vào mạng như mạng ở trường bách khoa ấy: học sinh -> proxy -> internet. Nó là trung gian giữa người dùng và internet, có tác dụng ẩn danh người dùng, kiểm soát truy cập, cache dữ liệu, bảo mật chặn các yêu cầu độc hại.
+Reverse Proxy là cái để mọi người bên ngoài vào máy chủ của ta: customer -> internet -> Reverse Proxy <-> server của ta. Reserve Proxy là trung gian giữa người dùng và máy chủ cuối, giúp bảo mật chặn các yêu cầu k an toàn, cache data, load balancing.
+
+Ta thêm vài con máy chủ và 1 con reverse proxy để có mô hình:
+client -> call APIs -> Reverse Proxy -> API Server 1 (cluster) -> Database
+  ^                                  \> API Server 2 (cluster) /^
+  |
+Cloudflare <- Static content BLOB Storage
+
+--> Các con server y hệt nhau, nó chỉ có vai trò xử lý dữ liệu và tương tác vói 1 database duy nhất. Nhưng cần các request cần phân bố đồng đều tới các server. Khi 1 client connect tới server sẽ tạo ra 1 session, các request sau cũng trong session đó sẽ có tốc độ nhanh hơn vì dùng lại connection cũ chứ kp tạo khởi tạo lại. Khi đó ta cần load balancer, 1 dạng đặc biệt của reverse proxy.
+
+Apache server / nginx có thể làm load balancer.
+F5 là 1 phần cứng chuyên dụng cho load balancer, được phát triển bởi công ty F5 Networks.
+Còn cấu hình chia sẻ session thì nginx apache đều có. Trong Java cũng có TomCat là một máy chủ web servlet và JSP (JavaServer Pages) và được dùng web Java.
+
+-> Nút cổ chai là database vì vẫn có nhiều request vào dữ liệu ít thay đổi mà lại hay được truy vấn, ta có thể dùng hệ thống cache. Có 2 loại cache là In-Memory Cache và Distribution Cache, ngoài ra có thể tạo cache trên client or tạo bảng cache trên DB, cache từ trên server.
+
+- Với In-Memory Cache ta cache ngay trên RAM của các API Server. Nhưng nhiều cache có thể gây hết RAM và cần các giải pháp xóa cache lâu không dùng như: LRU(Least Recent Use) hoặc FIFO, LFU(Least Frequently Use)
+=> Vì kp ai cũng request như nhau nên đọc k có thì tìm trong DB (MISS), tìm được lại lưu vào cache kèm expires.
+
+Giả sử ta cache trên từng server nên nếu ban đầu client gọi vào server A được cache luôn ở server A nhưng về sau Reverse Proxy gọi vào server B k được cache lại mất tg. Ta phải dùng Hash thay vì các cách khác như Round Robin. Nhưng dùng thuật toán Hash đồng nghĩa 1 IP luôn request vào 1 server nhưng nếu server đó chết thì Reverse Proxy vẫn chỉ cho request đó tới server cũ thôi, tương tự thêm server mới thì chả connect được. Họ fix bằng thuật toán Consistent Hashing or Rendezvous để đảm bảo mỗi client trỏ đến đúng server và k bị ảnh hưởng bởi vc thêm xóa 1 server, server hỏng tự chuyển sang server khác (K đi sâu vào 2 thuật toán đó).
+
+- Với PP cache thứ 2 là Distribution Cache tức lưu cache ở hẳn server khác chứ không lưu trên server API của mình. Khi đó sẽ tốn thêm đường truyền vì dùng 1 server riêng để làm cache server. Ưu điểm là cache tập trung lại 1 server thì việc cập nhập cache cũng dễ dàng hơn. Và nếu ta restart server API thì cache k bị mất còn kiểu In-Memory sẽ mất hết. 
+Nếu cache server đó sập thì hệ thống cache cx đi. Nhưng ta có thể replica để tăng tính khả dụng cho nó.
+
+Có thể kết hợp tạo cache nhiều tầng, memory MISS thì tìm distribution cache, distribution MISS thì lấy trong database
+Client --Call APIs--> Reverse Proxy     -> API Servers 1(In-mem cache) -> Redis Cluster, Database
+  ^              (Rendezvous Hashing)   \> API Servers 2(In-mem cache) /^
+  |
+Cloudflare <- Static content BLOB Storage
+
+-> Cache k thể xử lý hết 1 lượng database quá lớn hàng triệu người. Nếu db xem nhiều mà ghi ít thì ta có thể chia mô hình master-slave:
+          Web server
+          /^  ^|  ^\
+         /    ||    \
+        /     |v     \
+    slave1 <-master-> slave2
+Đọc và ghi với master, chỉ đọc với các slave và 3 cái database đồng bộ với nhau. Do đọc nhiều hơn ghi nên dùng như v để giảm tải cho database chỉ đọc bằng cách chia ra nhiều database.
+VD database sản phẩm bán hàng thì 1 product có thể ghi vài lần nhưng có thể có tới 1 triệu người đọc nó đồng thời, do đó các database slave thường có RAM rất mạnh, master thì RAM yếu hơn nhưng CPU có thể mạnh để xử lý request update.
+Việc đồng bộ master vào slave có nhiều cách, nó giống như việc replica ra ấy. VD trong MySQL có tool Binlog giúp làm điều này
+
+-> Nếu dữ liệu mà lớn thì truy vấn của người dùng vẫn lâu. VD tìm 1 row trong 1 tỉ row sẽ bị lâu. Ta fix với Sharding bằng cách chia dữ liệu nhiều phần rồi lưu ở các database khác nhau và dựa vào bảng shard để quyết định vào đâu lấy dữ liệu, sau đó lấy đồng thời. 
+
+VD: bảng user mà client request. Ta có thể chia ra theo chữ cái đầu của username. VD A lưu vào database A, B lưu vào database B. Lúc cần request user nào dựa vào bảng shard và ta chỉ tìm trong database tương ứng mà bây giờ số lượng dữ liệu trên mỗi database sẽ giảm và truy vấn nhanh hơn:
+122334556(Partition) -> 122(shard1) / 334(shard2) / 556(shard3) / ...
+Nếu những người tên bắt đầu bằng A, Ư, Ơ thì sẽ có cái được chọc nhiều, cái chọc ít(Celebrity Problem). Thực tế họ sẽ k dựa vào chữ cái đầu mà dùng hàm băm cho cân bằng nhưng kiểu gì cũng sẽ có chỗ nhiều chỗ ít(chỗ nhiều gọi là hotspot), lúc đó phải sửa hàm, sửa bảng shard hoặc tăng cấu hình cho con shard trâu kia. 
+
+Thực tế không phải lúc nào chia nhiều database ra cũng tốt, họ chỉ chia khi có nhu cầu thấy rằng tốc độ query bị chậm. Khi đó có thể thêm 1 trường order vào bảng tăng từ 1. Nếu data có order <= 1 triệu thì lấy ở bảng 1, > 1 triệu thì lấy từ bảng 2
+Giải pháp khác là dùng timestamp chia bảng từng năm, data của năm 2024 lưu riêng, data của năm 2025 cho đến h lưu riêng.
+
+Gặp vấn đề dữ liệu nằm trên các server khác nhau thì khi lấy tất cả sẽ phải join? Trong SQL cũng có cơ chế tự lấy join bảng với PARTITION.
+Ta có thể vẫn lưu data trên 1 DB master gọi là Single Source of Truth(SSoT) để vẫn dùng với các request update và request đọc mà cần join nhiều shards, đồng thời tạo 1 worker để update từ master DB vào các shards. DB shards chỉ dùng để đọc nhanh khi cần search trong 1 lượng dữ liệu cực lớn mà cache k xử lý được.
+
+-> Khi có nhiều server xử lý các task độc lập, các server toàn giao tiếp vói nhau thông qua fetch API sẽ rất loạn và bị chậm. Vd gửi mail, login, đặt hàng, GAO chia server riêng chứ kp lúc nào server cũng replica. Mô hình kiểu: A tự request tới B nếu cần database từ B, B trả lại data cho A
+Cải thiện bằng Message Broker. MB là 1 thành phân trong kiến trúc phân tán sử dụng truyền data giữa các hệ thống thường gặp trong microservice. Giải quyết vấn đề 1 hành động cần làm quá nhiều thứ bị lâu.
+
+Mô hình thường dùng nhất của MB là pub-sub kết hợp message queue. 
+- Ở mô hình pub-sub thì A publish event, các B sẽ subscribe để thực hiện. A chỉ cần publish là kết thúc việc handle request, tiếp theo B xử lý bất đồng bộ độc lạp. Như v server A xử lý rất nhanh, kbh bị quá tải
+- Mô hình message queue thì các message cần gửi qua các ứng dụng sẽ gửi vào queue và kết thúc xử lý. Các ứng dụng liên tục check queue và lấy ra xử lý, kbh bị quá tải.
+=> Thường kết hợp cả 2: Publisher sẽ gửi data vào 1 queue chung rồi kết thúc xử lý. Các worker subscribe vào queue để lấy xử lý lần lượt.
+
+Điểm lợi: Các subscriber k bị quá tải (như khi chỉ dùng pub-sub) vì nó lấy từng cái từ queue xử lý chứ kp tất cả message đến cùng lúc; Đảm bảo message đến theo đúng thứ tự, đảm bảo stable khi server sập, message k mất; Khi cần thêm server hay hệ thống mới chỉ cần tạo rồi cho subcribe mà k cần sửa publisher; Tính chất ack.
+
+--> Nếu chỉ dùng pub-sub thì hệ thống sập là mất hết. Còn nếu dùng DB làm message queue cũng được nhưng sẽ k đủ các tính chất của message queue chuyên dụng.
+Hệ thống pubsub còn gọi là Inbox Outbox Pattern - 2 pattern thg dùng trong kiến trúc phân tán:
+Inbox Pattern có Inbox (Message Receiver) nhận thông điệp từ các nguồn và định tuyến đến các thành phần phù hợp trong hệ thống. Nó giúp tách biệt việc nhận và xử lý thông điệp
+Outbox Pattern có Outbox (Message Sender) nhận thông điệp từ thành phần gốc và gửi tới các đích tương ứng. Nó giúp tách việc gửi ra, thành phần gốc éo cần biết có các đích nào cần gửi mà cứ để Outbox lo.
+=> Cụ thể VD nó dùng 1 bảng riêng trong DB lưu id và info của các event message gửi đi. Thì nó chỉ cần gửi mỗi id rồi search trong db chứ kp mỗi lần gửi hàng đống data 
+
+=> ref tới ảnh "Message Broker"
+User call API thực hiện change data trong User Microservice -> Module Rest API nhận được sẽ lưu message data vào bảng Data, lưu thông tin event cần publish vào bảng Outbox. Lưu vào 2 database đó trong 1 transaction atomic -> Module Rest API notify tới Publisher và kết thúc request -> publisher lấy từ database Outbox ra message và publish qua event bus -> khi event được publish qua event bus thành công thì xóa event đó khỏi bảng Outbox. Ở bước này nếu gửi thất bại, VD bị cúp điện chẳng hạn thì bảng Outbox vẫn lưu event và chờ có điện thì check database có event nào thì gửi đi thôi -> Subscriber của Logic Microservice nhận về message sẽ lấy data để xử lý từ bảng Data vì trước lưu vào bảng đó -> Sau đó xử lý logic bth
+Nếu Subscriber của Logic Microservice nhận và xử lý bị lỗi. Nó lấy lại message đó lần nữa từ DB để thực hiện có sao không? Điều này là tùy vào loại message, ta nên gắn thêm 1 trường idempotent vào message để set xem 1 message có bị thay đổi giá trị khi thực hiện lại nhiều lần không. Nếu nó không thay đổi giá trị sau khi thực hiện xử lý thì rõ ràng xử lý lỗi, ta hoàn toàn lấy ra xử lý lại được. Nhưng nếu trường này là false thì phải xử lý tùy nghiệp vụ, nó đang làm dở và ta muốn làm tiếp hay làm thủ công set lại từ đầu, phải quản lý được mọi TH. 
+VD ở trên thì User Microservice có thể là 1 server leader và có nhiều server khác trong trạng thái dự phòng
+
+-> Thường thì để tăng khả năng xử lý, ta dùng nhiều instance của server và dùng load balancing chia tải và cũng hoạt động như 1 cơ chế dự phòng, nếu 1 server die thì load balancing tự động ref tới 1 server khác. 
+Nhưng nhiều lúc task đơn giản, ta chỉ có 1 worker, và ta tạo nhiều worker khác chỉ có vai trò dự phòng chứ không chạy. Khi đó phải dùng thêm Leader Election. Leader Election cũng dùng trong trường hợp phân chia vai trò primary secondary, khi primary chết thì bầu 1 secondary lên làm primary mới.
+Nó dùng thêm nhiều con server khác dự phòng và ở 1 thời điểm, chỉ có 1 con được chọn làm leader chạy. Nếu leader die sẽ dùng thuật toán bầu con khác lên thay thế, trong lúc đó ta có thể fix con bị hỏng. Leader election cũng dùng trong TH 1 máy chạy 1 ứng dụng bằng nhiều processes. Nếu 1 instance die thì 1 instance khác thế chỗ. 
+
+Cơ chế bầu leader chi tiết học trong môn Distributed System. Ở cấp độ cao, họ k implement chi tiết mà dùng các thuật toán như Paxos hay Raft. Ở cấp độ cao hơn, họ dùng luôn các phần mềm hỗ trợ các thuật toán như zookeeper và etcd giúp implement dễ hơn: Zookeeper dùng trong Kafka; Etcd dùng trong K8s.
+2 tool này giống như 1 cái db lưu key-value có tính highly available và strongly consistent. Highly available là bền vững khó bị ngỏm. Strongly consistent là tính chất khi lấy hay thêm dữ liệu từ đâu trong hệ thống phân tán thì hoặc là kết quả lấy ra là giống nhau, hoặc là không lấy được gì cả. Bản chất nó cũng chỉ implement 1 trong 2 thuật toán trên.
+VD etcd như 1 db lưu cặp key-value chứa IP của leader. Nếu leader chết sẽ chạy thuật toán bầu và lưu leader mới.
+
+-> Hệ thống vẫn chưa tốt khi search data vì hầu hết các kiểu DB thông dụng xử lý search kém. VD search theo text, case đơn giản thì chỉ cần SQL đánh FULL TEXT SEARCH index. Phức tạp hơn thì dùng hẳn 1 loại database chuyên để search.
+Vd: ElasticSearch là loại database có tốc độ search rất nhanh. Nó được phát triển dựa trên Lucene của Apache.
+Users -- LoadBalancer -- Server1 --Read-- Cache --Not exist in cache-- Slave
+                      -- Server2 --Write-- Master
+                                 --Search-- ElasticSearch      
+=> Đương nhiên là cả DB Slave và ElasticSearch đều phải đồng bộ với database master bằng các cơ chế mỗi khi write
+
+Bên cạnh đó, họ vẫn phải chọn lọc thủ công trong 1 số TH. VD có 1 vài sản phẩm mới ra mắt được quá nhiều người truy cập (hot data), họ sẽ bỏ vào cache trước để người dùng lấy từ đó nhằm giảm tải database. Data ít truy cập gọi là cold data.
+
+-> Core hệ thống thì ok, nhưng thỉnh thoảng treo server database, nghẽn mạng, quản lý cần biết request nào bị lỗi thì phải có 1 cơ chế thông báo. Có 3 loại:
+1) Logging: Log các vấn đề trong hệ thống. 
+Đơn giản nhất là ghi vào file các kiểu log Error, Info hay Debug như kiểu system_log.txt nhưng làm v sẽ khó tìm lỗi, khó thống kê tần suất lỗi vì phải đọc file thủ công. Còn nếu lưu log vào DB thì k ổn vì số lượng log mà lớn sẽ rất lâu để thống kê truy vấn, ảnh hưởng tới DB chính. 
+Họ xây dựng 1 hệ thống log riêng như ELK Stack:
+Log ---> logstash xử lý data ---> elasticsearch lưu data, phân tích data, giúp tìm kiếm nhanh ---> kibana visualize data
+=> ELK Stack có tốc độ truy cập nhanh, biểu diễn data trực quan, tách rời k ảnh hưởng tới performance hệ thống chính. 
+Ta cũng có thể log hành vi của người dùng và thống kê đưa ra tính năng phù hợp, VD có thể dùng Google Analytic.
+
+Nếu ta cần log những request bị lỗi có thể dùng hệ thống log kiểu APM (application performance monitoring) có tích hợp sẵn trong ELK Stack sẽ ghi thời gian phản hồi và số lượng request lỗi cho ta. 
+
+2) Monitor: sẽ lưu các thông tin cần quản lý lại và phân tích dự đoán các vấn đề. Nó khá giống logging nhưng logging lưu log ví dụ khi người dùng thực hiện action gì thì lưu lại. Còn monitor thì lưu lại trạng thái của server để quản lý.
+
+Basic nhất là cứ lâu lâu query vào các server 1 lần để xem trạng thái nó như thế nào, busy, đang rảnh hay đã sập để còn fix. Nhưng làm v sẽ tốn công. Do đó, họ dùng 1 hệ thống Prometheus + Grafana.
+Prometheus cũng chỉ 1 realtime database mà server lưu data vào. Còn Grafana hỗ trợ đọc data (hỗ trợ nhiều ngôn ngữ) và hiển thị lên (có thể dùng remote_write architecture trong ảnh).
+VD có thể dùng Prometheus để ghi bất cứ thứ gì như tình trạng RAM, CPU, DISK của server, cũng có thể implement báo hiệu khi server bị hết RAM dự đoán khả năng bị lỗi. 
+
+3) Alert là hệ thống cảnh báo nếu biết được lỗi sắp/đã/đang xảy ra. Khi đó ta có thể implement tự động gửi mail cho admin vào fix chẳng hạn.
+
+-> Ngoài ra còn có các hệ thống như Stream polling, MapReduce,... chưa học
+
+

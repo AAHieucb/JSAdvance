@@ -1,0 +1,63 @@
+Components:
+
+User Search Flow: The starting point, where users initiate product searches.
+
+Order Processing System: Manages the entire order lifecycle, from placement to shipment.
+
+Warehouse Service: Ensures product storage and retrieval are seamless. 
+
+Item Service: Provides detailed product information to assist user decisions.
+
+Purchase Orders: Handles supplier orders from Amazon and Flipkart.
+
+Notification Service: Keeps users informed of order updates.
+
+User Service: Manages user accounts and personalization.
+
+Recommendation Service: Offers personalized product suggestions.
+
+Cassandra Cluster: Scalable data storage for smooth information flow.
+Cassandra Cluster là một hệ thống phân tán (distributed system) dựa trên cơ sở dữ liệu không quan hệ (non-relational database) được gọi là Apache Cassandra. Nó được thiết kế để xử lý lưu trữ và truy vấn dữ liệu trên nhiều máy chủ (nodes) trong một mạng phân tán.
+Một Cassandra Cluster bao gồm nhiều máy chủ (nodes) hoạt động cùng nhau để lưu trữ và xử lý dữ liệu. Mỗi node trong cluster chịu trách nhiệm lưu trữ một phần dữ liệu và thực hiện các hoạt động đọc/ghi dữ liệu. Dữ liệu trong Cassandra Cluster được phân tán trên các node theo mô hình phân tán (distributed model) để đảm bảo tính sẵn sàng và khả năng mở rộng, tính chịu lỗi cao, sao lưu phục hồi tự động.
+
+Apache Spark Streaming Cluster: Powers real-time data processing.
+Apache Spark Streaming Cluster là một hệ thống phân tán (distributed system) dựa trên Apache Spark, một framework xử lý dữ liệu phân tán. Nó được thiết kế để xử lý dữ liệu dòng (streaming data) trong thời gian thực. Một Apache Spark Streaming Cluster bao gồm nhiều máy chủ (nodes) hoạt động cùng nhau để xử lý dữ liệu dòng. Mỗi node trong cluster chịu trách nhiệm xử lý một phần dữ liệu dòng và thực hiện các phân tích và tính toán trên dữ liệu đó. Dữ liệu dòng được chia thành các batch nhỏ và xử lý song song trên các node để đảm bảo hiệu suất cao.
+Nó hỗ trợ các phép biến đổi và phân tích dữ liệu dòng như lọc, ánh xạ, gộp, tính toán tổng hợp, và kết nối với các nguồn dữ liệu khác nhau như Kafka, Flume, và HDFS. Apache Spark Streaming Cluster được sử dụng rộng rãi trong các ứng dụng yêu cầu xử lý dữ liệu dòng trong thời gian thực, chẳng hạn như phân tích log, xử lý dữ liệu IoT, xử lý dữ liệu trực tuyến, và các ứng dụng liên quan đến trí tuệ nhân tạo và học máy.
+
+Hadoop Cluster: Mines insights from vast data to drive e-commerce strategies.
+Hadoop Cluster là một hệ thống phân tán (distributed system) dựa trên Apache Hadoop, một framework mã nguồn mở được sử dụng để lưu trữ và xử lý dữ liệu lớn (big data). Nó được thiết kế để xử lý và phân tán dữ liệu trên nhiều máy chủ (nodes) trong một mạng phân tán. Một Hadoop Cluster bao gồm nhiều máy chủ (nodes) hoạt động cùng nhau để lưu trữ và xử lý dữ liệu. Mỗi node trong cluster chịu trách nhiệm lưu trữ một phần dữ liệu và thực hiện các tác vụ xử lý dữ liệu.
+Hadoop Cluster sử dụng Hadoop Distributed File System (HDFS) để lưu trữ dữ liệu và Apache MapReduce để xử lý dữ liệu phân tán. Hadoop Cluster được sử dụng rộng rãi trong các ứng dụng có yêu cầu về xử lý và lưu trữ dữ liệu lớn, chẳng hạn như phân tích dữ liệu, khai thác dữ liệu, xử lý log, và các ứng dụng liên quan đến trí tuệ nhân tạo và học máy. Nó cung cấp một cơ sở hạ tầng phân tán mạnh mẽ để xử lý các tác vụ dữ liệu lớn một cách hiệu quả và có thể mở rộng.
+
+Kafka: Facilitates data communication within the system.
+Kafka trong hệ thống này là 1 phần giúp data được truyền tải giữa các component chính trong hệ thống. Khác với hệ thống Apache kafka.
+Apache Kafka là một hệ thống phân tán mã nguồn mở được sử dụng để xây dựng ứng dụng xử lý dữ liệu thời gian thực. Kafka được thiết kế như một hệ thống nhật ký phân tán (distributed log) và có thể xử lý hàng trăm nghìn hoặc thậm chí hàng triệu tin nhắn mỗi giây.
+Producer là các ứng dụng gửi (publish) tin nhắn (được gọi là records) vào Kafka.
+Consumer là các ứng dụng đọc (subscribe) tin nhắn từ Kafka.
+Topic là một danh mục hoặc feed tên mà các records được lưu trữ và phân loại. Mỗi record bao gồm một key, một value và một timestamp.
+Kafka cluster bao gồm một hoặc nhiều máy chủ (server) được gọi là brokers. Mỗi broker có thể xử lý hàng nghìn tin nhắn mỗi giây và hỗ trợ nhiều client cùng lúc.
+=> Kafka được sử dụng rộng rãi trong các tình huống yêu cầu xử lý dữ liệu thời gian thực, như tracking user activity, log aggregation, stream processing, event sourcing và cung cấp dữ liệu thời gian thực cho các hệ thống phân tích.
+
+Inventory Management System: Ensures product availability. Quản lý hàng tồn kho
+
+Pricing Service: Determines accurate product prices for search results.
+
+Redis Cluster: Speeds up data retrieval for a faster search experience.
+
+ElasticSearch Cluster: Enables powerful product searches.
+
+Wishlist Service: Lets users save favorite items for later.
+
+Cart Service: Manages shopping carts for easy tracking.
+
+Cart Database MySQL: Securely stores cart contents.
+
+Item Database MongoDB: Efficiently manages product data.
+
+Inventory Database MySQL: Monitors available inventory to prevent showing out-of-stock products.
+
+Order Management System Database MySQL: Ensures smooth order processing.
+
+Load Balancer: Optimizes system performance by distributing traffic.
+
+Authentication & Authorization Layer: Safeguards system access and data.
+

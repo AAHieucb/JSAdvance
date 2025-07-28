@@ -257,3 +257,45 @@ POST players/_search
 
 
 
+# Đồng bộ db vào elastic search
+-> Usecase postgreSQL đang có data, nhưng để tối ưu tốc độ truy vấn, ta phải đồng bộ vào elastic search. Đơn giản chỉ cần chạy job query data từ DB insert vào elastic search. 
+
+VD có 1 trăm triệu rows cần đồng bộ sẽ buộc mọi query db đều phải dùng index. Nhưng query plan trong DB tối ưu như nào, nhiều lúc ta k kiểm soát được, nếu quá lâu thì cần check từng lệnh để fix. Thậm chí có lệnh ta đánh index rồi nhưng nó không dùng, MySQL chạy index nhưng sang PostgreSQL cùng query nhưng lại éo dùng, phải check mới biết được.
+Lệnh "EXPLAIN (ANALYZE, BUFFERS) <query>" sẽ giải thích chi tiết 1 query, nếu có query không dùng INDEX COND mà dùng FILTER tức duyệt hết thì phải sửa. Tham số BUFFER luôn dùng để cung thêm thông tin qtr về data. Khi thực hiện, DB tự động lưu buffer để tối ưu, thông số buffer shared hit báo ta lưu nhiều như nào.
+
+Chú ý khi dùng OR trong db với data quá lớn or đk phức tạp, PostgreSQL có thể thực hiện FULL TABLE SCAN và loại bỏ đi rows k thoả mãn, thay vì dùng index. Có thể fix bằng cách tách queries, đổi sang dùng UNION, gộp so sánh trong tuple.
+URL: https://mattermost.com/blog/making-a-postgres-query-1000-times-faster/
+
+
+
+# ECK (Elastic Cloud on Kubernetes)
+Có công ty gọi là dùng ECK thì hiểu là dùng elastic search deploy trên K8s.
+Elastic search lưu trữ dữ liệu hỗ trợ filter phức tạp với fulltext search và phân tích data. K8s là quản lý triển khai các container. K8s có nhiều worker node có các pods chạy container.
+ECK là 1 giải pháp giúp deploy và quản lý các sản phẩm của Elastic Stack (như Elasticsearch, Kibana, Beats, và Logstash) trên K8s.
+
+Tức là elastic search chạy trong 1 container nằm trong 1 pod của 1 worker. K8s giúp tự động chạy, quản lý, scale các container. Nhờ đó dùng elastic search dễ hơn nhiều so với tự triển khai thủ công. Từ Cloud trong ECK không có nghĩa là phải dùng cloud, nó chỉ là việc dùng với K8s thôi.
+
+Trong K8s, PersistentVolumeClaim (PVC) là một yêu cầu cụ thể về các thuộc tính như access mode và không gian lưu trữ từ một PersistentVolume (PV).
+PersistentVolume (PV) là một khối lưu trữ (volume) được cấp phát bởi quản trị viên hoặc từ StorageClass trong Kubernetes. PV tồn tại độc lập với vòng đời của Pod.
+Cách hoạt động của PV và PVC:
+- Quản trị viên tạo PersistentVolume (PV). PV có thể được cung cấp từ các nguồn lưu trữ như NFS, iSCSI, Cloud Storage (AWS EBS, GCE Persistent Disk).
+- Người dùng tạo PersistentVolumeClaim (PVC) yêu cầu một PV với các điều kiện cụ thể (ví dụ: 10GB, chế độ ReadWriteOnce).
+- Kubernetes tự động tìm PV phù hợp với yêu cầu của PVC và kết nối chúng.
+- PVC được gắn vào Pod để cung cấp lưu trữ bền vững.
+=> Tức điểm đặc biệt là ECK dùng PersistentVolumes để đảm bảo dữ liệu Elasticsearch k bị mất khi container hoặc pod bị xoá. 
+
+VD thuôc tính của PVC: 
+- Dung lượng lưu trữ 10Gi. 
+- Access mode
+ReadWriteOnce: Chỉ một Pod có thể gắn (mount) PV ở chế độ đọc/ghi.
+ReadOnlyMany: Nhiều Pod có thể gắn PV ở chế độ chỉ đọc.
+ReadWriteMany: Nhiều Pod có thể gắn PV ở chế độ đọc/ghi.
+- Storage Class chỉ định loại lưu trữ như SSD, HDD, hoặc Cloud Storage như AWS EBS
+
+
+
+# Filebeat
+Là 1 trình thu thập dữ liệu, nó độc lập với ECK và có thể hỗ trợ ECK bằng cách thu thập data và gửi đến elastic search hoặc các hệ thống lưu trữ khác như Logstash, Kibana để lưu.
+VD Devops team triển khai hệ thống microservice trên K8s với các thành phân như class, module, lesson rồi mount FileBeat vào. Triển khai cả ECK. Filebeat trong K8s deploy dưới dạng một DaemonSet sẽ thu thập logs từ tất cả các pod và container trong hệ thống. Còn nếu logs ghi vào file, FileBeat cũng thu thập được logs từ memory của các microservice để gửi đến Elastic search. ECK có nhiều nodes trong cluster sẽ xử lý.
+
+

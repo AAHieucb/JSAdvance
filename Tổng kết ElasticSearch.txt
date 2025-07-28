@@ -1,51 +1,27 @@
 ElasticSearch
-Phát triển bởi Elastic, mã nguồn mở
-Công ty này cũng sở hữu 2 dự án Kibana và LogStash cung đầy đủ ELK Stack. 
-
-Trong đó, logstash là dịch vụ thu thập data được triển khai phía client ta k dùng ở backend. Hiện nay người ta dùng Filebeat thay thế cho log stash vì nó nhẹ hơn, tốt hơn logstash vì logstash thất bại sẽ gây mất bản ghi
-
-
-
-# Tại sao k dùng elastic search thay thế cho database và ngược lại? 
-Vì ElasticSearch chỉ phục vụ search nhanh, lưu data dạng object, chỉ dùng cho hệ thống phân tán scale chiều ngang tốt, k có tính ACID. Còn database truyền thống có đủ tính ACID, lưu data dạng bảng, có relational giữa các bảng data, security tốt hơn.
-
-Elastic Search chỉ dùng cho full-text search, realtime analytics với unstructured data. SQL dùng cho complex relational data, transactions, structured data. MongoDB là NoSQL như ES nhưng data vẫn là có cấu trúc model cụ thể và data relationship phức tạp, khác so với ElasticSearch. 
-K thể dùng SQL thay thế E vì full text search của E rất mạnh. Dùng SQL bth kết hợp index giúp tăng tốc nhưng với lượng data cực kỳ lớn, index bắt đầu vô dụng, thậm chí còn tốn thêm bộ nhớ vô ích, khi đó phải dùng E.
-
+Trong ELK stack, Logstash là dịch vụ thu thập data được triển khai phía client ta k dùng ở backend, Kibana visualize data. Hiện dùng Filebeat thay cho Logstash vì nó nhẹ hơn và tốt hơn, VD Logstash thất bại có thể gây mất bản ghi
 
 
 # Basic
--> Cài đặt ElasticSearch và Kibana bằng Docker:
-=> Có cloud cho elastic search tương tự rabbitmq có thể đăng ký. 
+-> Elastic search k thể thay thế db vì chỉ phục vụ search nhanh data dạng object, k có tính ACID. Còn database truyền thống có đủ tính ACID, có relational giữa các bảng.
+Elastic Search chỉ dùng khi cần full-text search, realtime analytics với unstructured data. SQL và mongodb dùng cho complex relational and structured data. 
+K thể dùng SQL thay thế ES vì full text search của ES rất mạnh. Còn khi dùng SQL với lượng data cực lớn, index bắt đầu vô dụng, thậm chí còn tốn thêm bộ nhớ, tốc đọ chậm
 
-Kibana và elasticsearch phải cùng 1 mạng host
-
-docker network create elastictest => tạo 1 network vì ta muốn ElasticSearch và Kibana tương tác với nhau cùng 1 mạng cung ra ngoài
+-> Cài đặt: - Dùng cloud
+- Dùng docker cài ES và Kibana:
+docker network create elastictest => tạo 1 network vì ElasticSearch và Kibana tương tác với nhau trong cùng 1 mạng host cung ra ngoài
 docker pull docker.elastic.co/elasticsearch/elasticsearch:8.8.2 => vào dockerhub cho phiên bản mới nhất
 docker run --name es-test --net elastictest -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" -it docker.elastic.co/elasticsearch/elasticsearch:8.8.2
-
---> Fix lỗi:
-Ở phiên bản 8 k báo lỗi trực tiếp mà ghi vào file. Ta dùng wsl k tìm được file log ghi lỗi. Dùng version 7 sẽ show lỗi ngay trên cli thấy được. 
-Lỗi memory trong linux quá nhỏ: vào wsl -> chạy "sysctl -w vm.max_map_count=262144"
-Lỗi default discovery settings k phù hợp cho bản production, fix command option: -e "discovery.type=single-node"  
-
---> Vào localhost:9200 để check elasticsearch đang chạy. 
-Ở version 7 tạo elasticsearch trực tiếp k cần mật khẩu hay token gì, mở http lên là được. Ở version 8, mỗi lần chạy sẽ sinh ra mật khẩu bảo mật và token riêng cho kibana, mở với https.
-Thực tế nó sinh ra 1 user mới trong wsl là elastic, cũng là username đăng nhập.
-
+Vào localhost:9200 để check elasticsearch đang chạy. 
 Kibana tương tự dashboard của rabbitmq. Khi cài elasticsearch nhận được 1 cái token paste vào kibana để tương tác bằng giao diện. 
 
-**Tiếp:
-docker pull docker.elastic.co/kibana/kibana:8.8.1
+docker pull docker.elastic.co/kibana/kibana:8.8.1 => cài kibana
 docker run --name kib-test --net elastictest -p 5601:5601 docker.elastic.co/kibana/kibana:8.8.1
-
-=> Mở với http://localhost:5601/?code=622883
+Mở với http://localhost:5601/?code=622883
 Vì host 0.0.0.0 k được config trong file yaml của kibana vì ta chạy thẳng cli, mặc định dùng localhost
 
-Nếu tắt đi và bắt lại phải dùng:
+-> Nếu tắt đi và bắt lại phải dùng:
 docker logs <hash> > test.txt => để xem log lấy password các thứ. Search từ khóa passowrd, còn username default là "elastic" => Nó cũng hướng dẫn cách đổi mật khẩu luôn
-
--> Khi tương tác với Elastic search phải nhập tk mk authorization, vd test bằng thunderclient ok
 
 
 
@@ -57,7 +33,7 @@ POST test/_doc
 {
   "username": "Hello"
 }
-=> test là chỉ mục tự tạo nếu chưa có. Mọi tương tác đều phải xác định tác động tới 1 chỉ mục nào hay tác động toàn bộ.
+=> Test là chỉ mục tự tạo nếu chưa có. Mọi tương tác đều phải xác định tác động tới 1 chỉ mục nào hay tác động toàn bộ.
 
 Add multi vào index test:
 POST test/_bulk
@@ -141,14 +117,10 @@ PUT test/_mapping
 
 GET / => chính là localhost::9200
 
---> Tùy biến với Devtool:
+--> Tùy biến với Devtool: Lệnh <endpoint> {<body dạng json>}
 URL: https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
 
-Cú pháp: Lệnh <endpoint> {<body dạng json>}
-endpoint thì tùy biến: đầu tiên là index custom / phần url chức năng elastic cung sẵn
-
-Lệnh thì đủ các thể loại của REST API. VD check tồn tại record hay không:
-HEAD test/_doc/100001 => check bản ghi
+VD: HEAD test/_doc/100001 => check bản ghi tồn tại
 HEAD test => check có chỉ mục test hay không
 
 Các endpoint có lúc dùng trong body, có lúc dùng trong url path, có lúc dùng trong url search. VD xóa bản ghi:
@@ -283,11 +255,5 @@ POST players/_search
 }
 => max_expansions là max lấy 2 phần tử, default nó là 50 phần tử
 
-
-
-# Other
--> Để đồng bộ data ở database và elasticsearch, ta có thể update database check thành công thì gọi update ES. 
-Nhưng làm v sẽ kém performance. Dùng đúng điểm lợi của microservice, ta nên nhét data cần udpate vào 1 message queue và kết thúc hàm của người dùng. 1 process sẽ check liên tục lấy từ queue ra update db.
-Khi đó nên có 1 hệ thống log lỗi nếu update elastic fail là được
 
 

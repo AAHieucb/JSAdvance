@@ -1,20 +1,11 @@
-JSAdvance
-
-
-# Dùng Map thay if else và switch case:
-if else là cấu trúc bậc thang
-switch case nhanh hơn if else đáng kể khi số lượng điều kiện lớn. Mỗi điều kiện k phụ thuộc vào điều kiện trước đó nên thực hiện như mạch logic sẽ nhanh hơn.
-=> Tuy nhiên trong Js khi muốn search theo key nên dùng new Map là nhanh nhất. Map là 1 instanceof Object nhưng sinh ra để search nhanh hơn, nên dùng thay thế
-
-
-
 # Backend for Frontend (BFF) Pattern
-Là mô hình thiết kế dùng 1 server riêng tối ưu cho FE dễ call API. 
+Là mô hình thiết kế dùng 1 server riêng tối ưu cho FE để dễ call API hơn 
 Mỗi loại UI page nên có 1 BFF riêng. VD mobile có thể bỏ đi 1 vài dòng text hay ảnh thì response từ server có thể trim bớt để tối ưu.
 
-Browser có giới hạn số lượng API call vào 1 domain tại cùng 1 thời điểm. VD với chrome mặc định là 6 requests 1 lúc. Vd web có trang dashboard cần FE gọi 18 API 1 lúc và xử lý sẽ lag, ta nên dựng 1 BFF cung 1 API cho FE gọi, bên trong gọi 10 API (Promise.all) và trả ra kết quả đã xử lý cho FE, tốc độ sẽ nhanh hơn 3 lần. FE chỉ cần lo render lên UI.
+Browser có giới hạn số lượng API call vào 1 domain tại cùng 1 thời điểm. VD với chrome mặc định là 6 requests 1 lúc. 
+Vd web có trang dashboard cần FE gọi 10 API 1 lúc và xử lý sẽ lag thì nên dựng 1 BFF cung 1 API cho FE gọi, bên trong gọi 10 API (Promise.all) và trả ra kết quả đã xử lý cho FE. FE chỉ cần lo render lên UI.
 VD: NextJS client ---Call BFF---> NextJS API ---Call---> 10 API services in server.
-=> Thực tế chỉ dùng khi tiện (SSR) hoặc gặp vấn đề về hiệu suất. Với case đơn giản có thể viết API gom ở ngay server gốc được.
+=> Thực tế chỉ dùng vậy khi tiện (SSR), với case khác có thể viết API gom ở ngay server gốc được. Lưu ý chỉ tối ưu khi thực sự gặp vấn đề về performance
 
 
 
@@ -30,17 +21,6 @@ Ngày nay: Đặt hàng --> Xử lý [100ms check giảm giá] [200ms tích đi�
       [100ms][200ms][100ms] [...]
 
 VD ActiveMQ, RabbitMQ giúp triển khai mô hình MessageQueue cho microservices => Database, cache, messsagequeue là 3 loại storage lưu data buộc phải có trong các hệ thống lớn. 
-
-
-
-# Sử dụng redis pubsub
-User đặt hàng sẽ xử lý tính giá và gửi mail và trả lại kết quả cho user. Server trả kết quả ngay lập tức còn 2 services kia thực hiện bất đồng bộ đồng thời ở 2 ứng dụng riêng.
-Việc dùng message queue mới thực sự là microservice. Còn redis pubsub chỉ là 1 cách để các service giao tiếp với nhau, 1 cách tương đương với việc gọi API thôi.
-
-Các subscriber và publisher tương tác qua channel của redis: Có thể dùng rdcli để làm pubsub test trước khi code vì mọi lệnh trong code đều có thể làm bằng cli và ngược lại.
-- Mọi publisher chạy tức thì, độ trễ thấp. Độ tin cậy thấp, chỉ dùng khi giao tiếp nhanh và k cần xác nhận, k cần lấy kết quả.
-- Chỉ dùng với hệ thống lượng request ít. VD có 1000 user cùng request làm nó bắn 1000 sự kiện 1 lúc sẽ rất dễ mất message.
-- Tính cô lập cao, subscriber và publisher k biết gì về nhau nên cũng dễ dàng thêm hàng loạt subscribers. Còn gọi bằng API thì phải biết, cứ thêm 1 subscriber thì phải sửa publisher thêm hàm gọi.
 
 
 

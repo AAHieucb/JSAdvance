@@ -1,3 +1,112 @@
+# Bulk API Pattern
+Tạo 1 endpoint /$batch cho user gửi 1 request chứa nhiều request khác. 
+
+-> Odata batch dùng mutipart với từng phần là application/http => nên dùng thay vì JSON batch
+Request:
+POST /$batch
+Content-Type: multipart/mixed; boundary=batch_123
+Body:
+--batch_123
+Content-Type: text/plain
+
+Hello
+
+--batch_123
+Content-Type: image/png
+
+(binary data)
+
+--batch_123
+Content-Type: multipart/mixed; boundary=changeset_456
+
+--changeset_456
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+
+POST /users HTTP/1.1
+Content-Type: application/json
+{
+  "name": "Alice"
+}
+--changeset_456
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+
+DELETE /inventory/1 HTTP/1.1
+--changeset_456--
+
+--batch_123--
+
+Server và client phải tự xử lý parse request và response thủ công.
+changeset không chứa GET, chỉ chứa các action thay đổi data và server cần đảm bảo 1 changeset là 1 tx, 1 lệnh failed thì rollback cả changeset đó.
+batch
+  ├── GET
+  ├── changeset A
+      ├── POST
+      ├── PATCH
+      └── DELETE
+  ├── GET
+  └── changeset B
+      ├── POST
+      ├── PATCH
+      └── DELETE
+Kiểu Content-Type: multipart/mixed; boundary=abc123 thì multipart/mixed dùng nhiều kiểu dữ liệu, boundary là phần ngăn cách trong multipart. Còn có multipart/form-data chuyên dùng cho HTML form, VD <form enctype="multipart/form-data">
+K có yêu cầu chạy song song, có thể implement gom các hàm chung thành 1, chạy song song từng phần GET và changeset với nhau tuỳ.
+
+-> JSON Batch tương tự chỉ là truyền mảng vào thôi
+Request:
+[
+  {
+    "id": "1",
+    "method": "GET",
+    "path": "/users/1"
+  },
+  {
+    "id": "2",
+    "method": "POST",
+    "path": "/orders",
+    "body": {
+      "productId": 10
+    }
+  }
+]
+=> Muốn atomic tự truyền thêm trường "atomic": true là xong.
+Response client tự parse lấy data:
+--batchresponse_456
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: 1
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "id": 1,
+  "name": "Alice"
+}
+
+--batchresponse_456
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: 2
+
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+
+{
+  "error": "User not found"
+}
+
+--batchresponse_456--
+
+
+
+
+
+
+
+
+
 
 # Kiểu data nested và graph 
 VD workflow condition khi AND OR lồng nhiều cấp, nested comment.
@@ -147,3 +256,231 @@ MQ cung khả năng xử lý tùy biến, ta có thể thêm workder để xử 
 MQ cung khả năng xử lý song song, nên nhớ chạy for loop sẽ xử lý tuần tự, k dùng MQ ta sẽ phải tự implement bất đồng bộ việc này khá mệt
 
 Implement database cho noti.center -> implement MQ -> implement crawljob -> Implement server gửi từ MQ sang db user
+
+
+
+
+
+Queue binding Topic subscription Dead letter queue Lock renewal Message scheduling Giải thích từng cái
+Các khái niệm này thường xuất hiện trong hệ thống message queue/pub-sub như RabbitMQ, Apache Kafka, Azure Service Bus, Amazon SQS.
+Mình giải thích theo kiểu dễ hình dung:
+
+1. Queue Binding
+Là gì?
+
+Binding = “nối” queue với exchange/topic để message đi đúng nơi.
+
+Ví dụ:
+
+Producer gửi message vào Exchange
+Exchange quyết định queue nào nhận message
+Binding chính là luật kết nối đó
+Ví dụ RabbitMQ
+Producer
+   ↓
+Exchange
+   ↓
+Binding rule
+   ↓
+Queue
+
+Binding có thể dựa trên:
+
+routing key
+pattern
+wildcard
+
+Ví dụ:
+
+Queue A bind với routing key = order.created
+
+=> Chỉ nhận message có key order.created
+
+Dễ hiểu hơn
+
+Giống:
+
+Exchange = bưu điện
+Queue = hộp thư
+Binding = quy tắc phát thư
+2. Topic Subscription
+Là gì?
+
+Subscription = đăng ký nhận message theo topic.
+
+Consumer nói:
+
+"Tôi muốn nhận mọi message về payment"
+Ví dụ
+
+Topics:
+
+payment.created
+payment.failed
+order.created
+
+Consumer subscribe:
+
+payment.*
+
+=> nhận:
+
+payment.created
+payment.failed
+Khác Queue Binding thế nào?
+Queue binding = cách queue được nối
+Topic subscription = consumer đăng ký nhận topic
+
+Nhiều hệ thống dùng 2 khái niệm gần giống nhau.
+
+3. Dead Letter Queue (DLQ)
+Là gì?
+
+Queue đặc biệt chứa message bị lỗi không xử lý được.
+
+Khi nào message vào DLQ?
+
+Ví dụ:
+
+Consumer crash nhiều lần
+Retry quá số lần cho phép
+Message invalid
+Timeout
+Flow
+Main Queue
+   ↓
+Consumer fail
+   ↓ retry fail
+Dead Letter Queue
+Tại sao cần?
+
+Để:
+
+không mất message
+debug lỗi
+xử lý lại sau
+Ví dụ thực tế
+
+Message:
+
+{
+  "userId": null
+}
+
+API xử lý luôn lỗi.
+
+Sau 5 lần retry:
+
+=> chuyển vào DLQ
+
+Developer kiểm tra DLQ để fix.
+
+4. Lock Renewal
+Là gì?
+
+Khi consumer lấy message, hệ thống “lock” message đó để consumer khác không xử lý trùng.
+
+Nếu xử lý lâu:
+
+lock có thể hết hạn
+message bị consumer khác lấy lại
+
+Lock renewal = gia hạn lock.
+
+Ví dụ
+
+Message cần xử lý 5 phút.
+
+Nhưng lock chỉ 30 giây.
+
+Consumer phải:
+
+renew lock
+renew lock
+renew lock
+
+để giữ quyền xử lý.
+
+Nếu không renew?
+
+Có thể:
+
+message bị xử lý 2 lần
+duplicate data
+Hay gặp ở
+Azure Service Bus
+SQS visibility timeout extension
+5. Message Scheduling
+Là gì?
+
+Gửi message nhưng chưa xử lý ngay.
+
+Hệ thống sẽ delay đến thời điểm định trước.
+
+Ví dụ
+Gửi email sau 1 giờ
+
+Producer:
+
+schedule message at 10:00
+
+Queue chỉ deliver lúc 10:00.
+
+Use cases
+Retry delayed
+Fail → retry sau 5 phút
+Reminder
+Nhắc lịch ngày mai
+Delayed job
+Xử lý đơn hàng sau 30 phút
+Tổng kết nhanh
+Khái niệm	Ý nghĩa
+Queue Binding	Nối queue với exchange/topic
+Topic Subscription	Đăng ký nhận topic
+Dead Letter Queue	Queue chứa message lỗi
+Lock Renewal	Gia hạn quyền xử lý message
+Message Scheduling	Hẹn giờ gửi/xử lý message
+Ví dụ flow thực tế
+Order Service
+   ↓
+Topic: order.created
+   ↓
+Queue Binding
+   ↓
+Email Queue
+   ↓
+Consumer xử lý email
+
+Nếu lỗi:
+   ↓
+Retry
+   ↓
+DLQ
+
+Nếu xử lý lâu:
+   ↓
+Lock renewal
+
+Nếu muốn gửi email sau:
+   ↓
+Message scheduling
+
+
+
+
+
+Metadata
+Job queue
+Timer, schedule
+Worker
+Workflow
+Blob file, communicate subscribe giữa enpower và aos.
+
+
+-> Bài toán xây dựng hệ thống AI optimize storage. 
+Server detect các file lâu không sử dụng, các file duplicate, các file rác .cache. User có thể hỏi trực tiếp và yêu cầu hệ thống đưa ra các options để chọn và xoá các file thừa.
+Thực tế các hệ thống tối ưu như này không cần dùng AI, vì thuật toán tìm file và tìm ra các phương án tối ưu là code thuần tuý, giống kiểu Kmin AI chơi cờ cũng là tính các nước đi tối ưu nhưng vẫn gọi là dùng AI. 
+AI thực tế suy nghĩ trong usecase này chỉ dùng ở việc chat và hiểu ý của user. Đọc nội dung file và dán nhãn các file junk hay file quan trọng hay file thừa, duplicate. AI có thể học từ hành vi ngừoi dùng để đề xuất các options cá nhân hoá, các file thường xoá, các hướng đi optimize thường dùng.
+Có nền tảng cung AI đã train sẵn, cung API chỉ cần truyền input là return kết quả, hoặc cung model tự train theo tập data set của ta, hiếm khi nào tự xây AI model riêng.
+
+

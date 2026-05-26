@@ -74,3 +74,6 @@ VD implement queue local lần lượt lấy task xử lý trên 1 process riên
 Lý tưởng là khi số lượng message trong queue không bị tăng lên đến quá tải theo thời gian. Tức tốc độ xử lý của consumer phải nhanh hơn tốc độ message mới được thêm vào queue. Nếu k phải thêm consumers để tăng tốc độ xử lý.
 
 
+
+
+

@@ -68,3 +68,10 @@ Kiểm thử với thông báo thật với số lượng tăng dần 1 triệu,
 Trong duonglingo có Zombie mode là chế độ hệ thống tự động sử dụng khi sô lượng request tăng đột biến làm quá tải. App sẽ hạn chế gửi request tới BE trong 1 ktg nhất định bằng xs để giảm tải cho server k bị sập.
 
 
+
+# Khi cần gọi quá nhiều API 1 lúc
+- Có thể viết để cho max 3 request chạy 1 lúc tránh quá tải server hoặc lỗi ratelimit => Trong browser có sẵn cơ chế giới hạn số lượng request chạy đồng thời rồi
+- Tạo BFF phía FE
+- Phía BE tạo 1 endpoint gom API, or nhận mảng data và trả về list kết quả
+
+

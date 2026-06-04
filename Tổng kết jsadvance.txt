@@ -1,3 +1,10 @@
+# Bảo mật E2E
+HTTP là truyền tin bị MITM attack. HTTPs cản được vì thông tin truyền đi bị mã hóa khi thiết lập SSL connection với server. Nhưng như v server vẫn nhìn thấy nội dung data và biết thông tin nhạy cảm của user
+Giao thức E2E giải quyết vấn đề: 2 users trao đổi pubkey qua server, mỗi user dùng pubkey của người kia để mã hoá trước khi gửi tới server, server chỉ forward tin tới đích. Private key được lưu local ở máy của user, quên pass sẽ kbh lấy lại tin nhắn được nữa.
+=> Hacker tấn công server cũng k biết được message là gì, user phải nhớ mật khẩu mới xem được lịch sử tin nhắn.
+
+
+
 # Bulk API Pattern
 Tạo 1 endpoint /$batch cho user gửi 1 request chứa nhiều request khác. 
 
@@ -51,7 +58,7 @@ batch
       ├── PATCH
       └── DELETE
 Kiểu Content-Type: multipart/mixed; boundary=abc123 thì multipart/mixed dùng nhiều kiểu dữ liệu, boundary là phần ngăn cách trong multipart. Còn có multipart/form-data chuyên dùng cho HTML form, VD <form enctype="multipart/form-data">
-K có yêu cầu chạy song song, có thể implement gom các hàm chung thành 1, chạy song song từng phần GET và changeset với nhau tuỳ.
+K có yêu cầu về chạy song song, có thể implement gom các hàm chung thành 1, chạy song song từng phần GET và changeset với nhau tuỳ.
 
 -> JSON Batch tương tự chỉ là truyền mảng vào thôi
 Request:
@@ -101,42 +108,29 @@ Content-Type: application/json
 
 
 
-# Bảo mật E2E
-HTTP là truyền tin bị MITM attack
-HTTPs cản được vì thông tin truyền đi bị mã hóa khi thiết lập SSL connection với server. Nhưng như v server vẫn nhìn thấy nội dung data và biết thông tin nhạy cảm của user
-
-Giao thức E2E giải quyết vấn đề: 2 users trao đổi pubkey qua server, mỗi user dùng pubkey của người kia để mã hoá trước khi gửi tới server, server chỉ forward tin tới đích. Private key được lưu local ở máy của user, quên pass sẽ kbh lấy lại tin nhắn được nữa.
-=> Hacker tấn công server cũng k biết được message là gì, user phải nhớ mật khẩu mới xem được lịch sử tin nhắn.
-
-
-
-# Khi cần gọi quá nhiều API 1 lúc
-- Có thể viết để cho max 3 request chạy 1 lúc tránh quá tải server hoặc lỗi ratelimit.
-=> Trong browser có sẵn cơ chế giới hạn số lượng request chạy đồng thời rồi, nên làm ở FE k mang nhiều ý nghĩa
-- Tạo BFF phía FE
-- Phía BE tạo 1 endpoint gom API, or nhận mảng data và trả về list kết quả
-
-
-
 # Fuzzy search alg
 Thuật toán tìm kiếm gần đúng trên 1 list. Nhận vào 2 string và trả ra độ so khớp match nhau không.
 Để search tự sửa lỗi chính ta, implement thêm spell corrector chấp nhận chuỗi đích có độ so khớp ở 1 mức thấp là được.
 Ngoài ra còn có: Levenstein Distance Algorithm, N-gram Algorithm, BK Tree Algorithm, Bitap Algorithm
 
--> Naive Algorithm: duyệt 2 vòng for tìm input xuất hiện trong chuỗi đích trong list thì match. Tức chuỗi tìm kiếm phải liền nhau exactly đúng thứ tự.
-
--> Hamming Distance Algorithm: input là 2 chuỗi cùng kích thước, cho ra số lượng ký tự k khớp nhau. 
+- Naive Algorithm: 
+Duyệt 2 vòng for tìm input xuất hiện trong chuỗi đích trong list thì match. Tức chuỗi tìm kiếm phải liền nhau exactly đúng thứ tự.
+- Hamming Distance Algorithm: 
+Input là 2 chuỗi cùng kích thước, cho ra số lượng ký tự k khớp nhau. 
 Thuật toán giúp tìm gần đúng chuỗi đích nhưng nhược điểm là chuỗi phải cùng độ dài, nếu k cùng độ dài sẽ k luôn k khớp nên kém linh hoạt trong trường hợp ký tự thêm bớt ký tự
-
--> Levenshtein Distance (Edit Distance): đo sự khác biệt giữa hai chuỗi bằng cách đếm số lượng các phép chèn, xóa, thay thế cần thiết để biến chuỗi này thành chuỗi kia.
+- Levenshtein Distance (Edit Distance): 
+Đo sự khác biệt giữa hai chuỗi bằng cách đếm số lượng các phép chèn, xóa, thay thế cần thiết để biến chuỗi này thành chuỗi kia.
 Thuật toán tốt giúp sủa lỗi chính tả chuẩn
 
-=> Nếu muốn tìm kiếm một chuỗi ngắn trong một danh sách các chuỗi rất dài sẽ phải duyệt qua từng chuỗi dài và so sánh chuỗi ngắn với các đoạn con của chuỗi dài. Việc này rất chậm và cần tiền xử lý nhiều thứ, khi gặp case này, ta thường dùng các công cụ như Elastic Search chứ k tự implement, Elastic Search có hỗ trợ fuzzy search nhé. 
+Nếu muốn tìm kiếm một chuỗi ngắn trong một danh sách các chuỗi rất dài sẽ phải duyệt qua từng chuỗi dài và so sánh chuỗi ngắn với các đoạn con của chuỗi dài. Việc này rất chậm và cần tiền xử lý nhiều thứ, khi gặp case này, ta thường dùng các công cụ như Elastic Search chứ k tự implement, Elastic Search có hỗ trợ fuzzy search.
+MongoDB có index 'text' hỗ trợ fuzzy search kèm mức độ match
+SQL có full text search hỗ trợ search fuzzy chuỗi ngắn trong chuỗi dài, có LIKE tìm đa dạng hơn nhưng chậm, chỉ dùng với tập data nhỏ
+SQL có FREETEXT giúp tìm kiếm gần đúng từ đồng nghĩa như google 
 
 
 
 # QPS 
--> Định luật 80/20 là 80% request trong 1 ngày rơi vào 20% thời gian. Nếu hệ thống có 2M request/ngày thì cần bnh QPS và nếu 1 server chịu được 60 QPS thì cần bnh server? 
+Định luật 80/20 là 80% request trong 1 ngày rơi vào 20% thời gian. Nếu hệ thống có 2M request/ngày thì cần bnh QPS và nếu 1 server chịu được 60 QPS thì cần bnh server? 
 QPS là số lượng query 1s. Response time là thời gian request đi và về. TPS là transaction per second. VD 1 TPS có 2 QPS tức 1 transaction query tới server 2 lần.
 Server của ta cần xử lý được tải lúc giờ cao điểm mới được: 2M request * 80% = 1.6M request
 86400 * 20% = 17280s tức 1.6M request rơi vào 20% thời gian là 17200s
@@ -145,95 +139,65 @@ QPS = 1.6M request / 17200s = 93 request/s => Cần 2 server hoạt động gi�
 
 
 # 2 kiểu crawling server
-1) Server liên tục check và crawl data tĩnh từ 1 nguồn, nếu có data mới thì update vào DB. VD mỗi 24h crawl 1 lần
-Nhiều nền tảng họ tạo riêng 1 server để crawl hết các container cần crawl về trước và cung ra API, rồi server sẽ query data trong phạm vi container đó, để tránh crawl data thừa => VD untrest
-2) Server liên tục crawl data từ 1 nguồn, data đó liên tục thêm mới và có dấu thời gian, lượng data rất nhiều và không thể crawl hết 1 lúc. Ta có thể dừng lại và crawl tiếp từ vị trí trước bất cứ lúc nào. Khi crawl đến vị trí mới nhất, server tiếp tục chờ update realtime với data mới.
+- Server liên tục check và crawl data tĩnh từ 1 nguồn, nếu có data mới thì update vào DB. VD mỗi 24h crawl 1 lần
+Nhiều nền tảng họ tạo riêng 1 server để crawl hết các data vào container theo các rules xác định và cung ra API, rồi server sẽ query data trong phạm vi container đó, để tránh crawl data thừa => VD untrest k crawl data ngoài rules
+
+- Server liên tục crawl data từ 1 nguồn, data đó liên tục thêm mới và có dấu thời gian, lượng data rất nhiều và không thể crawl hết 1 lúc. Ta có thể dừng lại và crawl tiếp từ vị trí trước bất cứ lúc nào. Khi crawl đến vị trí mới nhất, server tiếp tục chờ update realtime với data mới.
 Đơn giản là lưu cả dấu thời gian vào db, cứ crawl là lấy dấu thời gian đó query tiếp cho tới hiện tại hoặc tới 1 mốc interval tiếp theo. Có cơ chế retry và atomic, đảm bảo dừng và crawl tiếp thoải mái. 
-Nhiều nền tảng cho phép subscribe vào 1 nguồn data source là socket để lấy data mới. Phải implement catch error connect gãy thì tự reconnect và mail thông báo.
+Nhiều nền tảng cho phép subscribe vào 1 nguồn data source là socket để lấy data mới. Phải implement catch error connection break thì tự reconnect và mail thông báo.
 
 
 
-# Horizontal scaling theo vị trí địa lý
-Nginx có thể xử lý 1M connection đồng thời trên 1 single server. Vậy xử lý 100M request đồng thời thì sao? Dùng horizontal scaling mở rộng nhiều server và thêm load balancers. Scale với K8s, Docker. Dùng HTTP3, chống DDoS. Dùng cache, CDN, sharding, socket, message queue. Nâng cấp chiều cao, bảo mật network, máy ảo. Track server load và capacity với monitoring tool. Autoscaling, backup server, thuật toán tự bầu cử tăng tính availability.
+# Usecase horizontal scaling theo vị trí địa lý
+Nginx có thể xử lý 1M connection đồng thời trên 1 single server. Vậy xử lý 100M request đồng thời thì sao? 
+Dùng horizontal scaling mở rộng nhiều server và thêm load balancers. Scale với K8s, Docker. Dùng HTTP3, chống DDoS. Dùng cache, CDN, sharding, socket, message queue. Scale cả vertical. Bảo mật network, máy ảo. Track server load và capacity với monitoring tool. Autoscaling, backup server, thuật toán tự bầu cử tăng tính availability.
 
-Thế nếu dùng load balancer, 100M request vào balancer đó thì toang? Dùng nhiều load balancer ở nhiều vị trí địa lý khác nhau. Nếu thực sự lớn thì dùng layered load balancer theo vùng miền. Dùng CDN để giảm tải request tới server.
+Thế nếu dùng load balancer, 100M request vào balancer đó thì toang? 
+Dùng nhiều load balancer ở nhiều vị trí địa lý khác nhau. Nếu thực sự lớn thì chia tiếp layered load balancer theo vùng miền. Dùng CDN để giảm tải request tới server.
 
-Có thể tạo 10 load balancer ở các châu lục khác nhau bằng 1 tk aws không? Có. Vào EC2 trong từng region tạo server, tạo Elastic Load Balancer trong EC2. Dùng Route 53 định tuyến người dùng từng khu vực vào các load balancer ở các vùng khác nhau. 
+Có thể tạo 10 load balancer ở các châu lục khác nhau bằng 1 tk aws không? 
+Có. Vào EC2 trong từng region tạo server, tạo Elastic Load Balancer trong EC2. Dùng Route 53 định tuyến người dùng từng khu vực vào các load balancer ở các vùng khác nhau. 
 
-Làm sao để cấu hình cho user tự query server hoặc load balancer gần nhất? Dùng dịch vụ DNS; Dùng CDN; Ở các load balancer có thể cấu hình thêm các rules để forwards đến server nào khi có nhiều server; Dùng Anycast Routing cho phép 1 IP được gán cho nhiều server và hệ thống mạng tự động định tuyến đến server gần nhất.
+Làm sao để cấu hình cho user tự query server hoặc load balancer gần nhất? 
+Dùng dịch vụ DNS; Dùng CDN; Ở các load balancer có thể cấu hình thêm các rules để forwards đến server nào khi có nhiều server; Dùng Anycast Routing cho phép 1 IP được gán cho nhiều server và hệ thống mạng tự động định tuyến đến server gần nhất.
 
-Route 53 trong AWS sử dụng pp nào? Nó là pp routing dùng dịch vụ DNS Geolocation, có thể cấu hình để gửi cho server gần nhất, hay có độ trễ nhỏ nhất, hay trọng số ưu tiên được set lớn nhất. 
+Route 53 trong AWS sử dụng pp nào? 
+Nó là pp routing dùng dịch vụ DNS Geolocation, có thể cấu hình để gửi cho server gần nhất, hay có độ trễ nhỏ nhất, hay trọng số ưu tiên được set lớn nhất, tuỳ. 
 
-Nhưng nếu server phân tán mà database tập trung thì query vẫn lâu nếu db ở xa? Có thể replica, hoặc data shard, hoặc cache lại, chia ra ở nhiều khu vực như server luôn.
+Nhưng nếu server phân tán mà database tập trung thì query vẫn lâu nếu db ở xa? 
+Có thể replica database ở nhiều nơi, hoặc dùng db sharding chia ra ở nhiều khu vực như server luôn.
+Replica update bị lâu nếu ở xa, nên dùng db sharding hơn. Khi đó data của các nước phải là độc lập nhau. Nó cũng giải quyết vấn đề về chính sách lưu trữ data ở các nước khác nhau có thể khác nhau. Cần thiết kế để query tới 1 nước phụ thuộc vào data chứ k phụ thuộc vào vị trí hiện tại của họ, VD 1 người di chuyển sang nước khác, họ vẫn query shard của nước gốc và chấp nhận query bị lâu hơn. Khi đó có thể tạo thêm cache cho case user di chuyển giữa các nước. 
+Cách db sharding này lại k dùng khi cần đồng bộ data realtime các nước. VD tạo bảng xếp hạng toàn cầu.
 
-Nếu replica thì data tự đồng bộ giữa các replica? Đúng, có nhiều loại replica khác nhau. 
+Nếu replica thì data tự đồng bộ giữa các replica? 
+Đúng là nó sẽ tự đồng bộ theo config, có nhiều loại replica khác nhau. 
 - Sync replication ghi data đồng thời vào primary và secondary, nhất quán cao nhưng độ trễ cao
 - Async replication ghi vào primary trước, secondary sau, sẽ có độ trễ và k nhất quán data
 - Semi-sync rep: primary xác nhận 1 vài secondary xong là được
 - Multi-master rep: ghi cùng lúc vào các master là coi như xong, k cần quan tâm secondary của các master xong hay chưa.
-=> AWS hỗ trợ database có sẵn các tuỳ chọn sao chép data. VD dùng dynamoDB cho multi-master. Tuỳ vào mức độ realtime cần như nào.
+=> AWS hỗ trợ database có sẵn các tuỳ chọn sao chép data. VD dùng dynamoDB cho multi-master. Tuỳ vào mức độ realtime của data cần như nào.
 
-Replica bị update lâu, tôi dùng shard chia theo location để tăng tốc? Khi đó data của các nước phải là độc lập nhau. Nó cũng giải quyết vấn đề về chính sách lưu trữ data ở các nước khác nhau có thể khác nhau. Cần thiết kế để query tới 1 nước phụ thuộc vào data chứ k phụ thuộc vào vị trí hiện tại của họ, VD 1 người di chuyển sang nước khác, họ vẫn query shard của nước gốc và chấp nhận query bị lâu hơn. 
-Có thể tạo thêm cache cho case user di chuyển giữa các nước. 
-=> K dùng khi cần đồng bộ data realtime các nước. VD tạo bảng xếp hạng toàn cầu.
-
-Dùng replica nhưng 2 master ở 2 khu vực cùng được ghi vào đồng thời sẽ k nhất quán? Có thể xảy ra khi replica 2 chiều mà dùng async update. Nếu k cấu hình gì hết, 1 số db mặc định cho bản ghi cuối đè, 1 số db báo lỗi dữ liệu. Có thể xảy ra TH kết quả cuối cùng là 2 db chứa 2 data khác nhau. 
-Thực tế ta chỉ cần dùng đúng loại replica cho từng case, khi nào update trong 1 tx, khi nào update async. Nếu thực sự dùng update replica async mà bị xung đột như này, cần phải cấu hình xử lý thêm như versioning, last write wins, user custom rules, ưu tiên request đến từ source nào, lấy random, quorum-based systems
-VD trong sql có thể cấu hình SQL Server Merge Replication để xử lý conflict tự động theo rules của ta.
-
-Dùng cloud cung các dịch vụ tự động replica và tự đọng phát hiện xử lý xung đột sẵn mà ta k cần phải tự cấu hình thủ công.
+Dùng replica nhưng 2 master ở 2 khu vực cùng được ghi vào đồng thời sẽ k nhất quán? 
+Có thể xảy ra, nếu k cấu hình gì hết, 1 số db mặc định cho bản ghi cuối đè, 1 số db báo lỗi dữ liệu, tệ nhất là khi kết quả cuối cùng là 2 db chứa 2 data khác nhau. 
+Nếu thực sự dùng update replica async mà bị xung đột như này, cần phải cấu hình xử lý thêm như versioning, last write wins, user custom rules, ưu tiên request đến từ source nào, lấy random, quorum-based systems, nếu 2 request kèm timestamp mà y hệt nhau thì chọn random chứ nhất quyết k xung đột.
+VD trong sql có thể cấu hình SQL Server Merge Replication để xử lý conflict tự động theo rules của ta. Hoặc dùng cloud cung các dịch vụ tự động replica và tự đọng phát hiện xử lý xung đột sẵn mà k cần phải tự cấu hình thủ công.
 
 Trong TH replica 1 master thì chỉ master có thể ghi, các slave chỉ đọc. Always On Availability Groups là 1 tính năng của SQL cho phép tự chuyển đổi dự phòng giữa các bản sao khi có sự cố, đảm bảo bất cứ thời điểm nào cũng luôn có 1 master.
-
-TK: 
-- Chia server theo vùng địa lý
-- Chia load balancer theo địa lý
-- Cấu hình tự query vào server gần nhất
-- Dùng CDN
-- Dùng shard hay replica, data chung hết hay data phân mảnh klq lẫn nhau
-- Dùng replia nhiều master hay 1 master
-- Dùng loại replica update đồng bộ như nào
-- Dùng replica nhiều master thì cấu hình xử lý xung đột như nào
-- Dùng replica 1 master thì cấu hình bầu cử như nào
-- Dùng cache cho shard
-
-
-
-
-
-
-# Kiểu data nested và graph 
-VD workflow condition khi AND OR lồng nhiều cấp, nested comment.
-Requirements: chèn, sửa, thêm data nhanh, 1 node đổi vị trí trong cây; lấy mọi nodes con của 1 node cha nhanh; 1 con nhiều cha hay 1 cha nhiều con; Lấy node cha của node con; Có hướng hay vô hướng; Có quan tâm thú tự các con trong 1 cha không; thứ tự duyệt các node.
-
-- Database lưu data recursive dưới dạng json string, deserialize ra nested class object trực tiếp được, mỗi lần lấy tất cả r xử lý bằng code. 
-Hoặc database lưu parentid là foreign key tới chính nó được, sẽ lưu dưới dạng adjacent list. Con nối với 1 cha thôi. Có thể dùng binary tree.
-Database lưu thêm 1 trường chỉ định vị trí nested và thứ tự. VD: path="1.2.3" là con của row có path="1.2", tìm kiếm mọi con với WHERE path LIKE '1.2.%'
-Database lưu mỗi row có 1 trường left và right (nested set model). VD X có left=1, right=10 thì tìm mọi con của X với WHERE left > 1 AND right < 10. Khi update phải update left right mọi con.
-Đơn giản là lưu như flat nhưng thêm 1 trường là parentId. Lấy list data từng cấp rất nhanh: lv1 lấy mọi comment k có parentid, view more 1 comment lv1 thì lấy mọi comment có parentId là id comment đó là xong.
-
-- Class object có thể chứa trường tự nested đệ quy được. Có thể lưu như 1 adjacent list, chỉ cần id của node cha thôi.
-Với dạng graph nhiều node 2 chiều, class object nên lưu kiểu graph. Số lượng k nên quá nhiều. Áp dụng các thuật toán tìm kiếm trên graph được.
-Class object có thể lưu dạng đường path "1.2.3", lưu left và right đánh dấu vị trí hiện tại trên cây.
-
-- Xử lý recursive thì gọi hàm recursive, hoặc convert sang vòng while bằng cách dùng stack or queue.
-Với data lưu dạng phẳng thì viết hàm xử lý bth.
 
 
 
 # Backend for Frontend (BFF) Pattern
 Là mô hình thiết kế dùng 1 server riêng tối ưu cho FE để dễ call API hơn 
 Mỗi loại UI page nên có 1 BFF riêng. VD mobile có thể bỏ đi 1 vài dòng text hay ảnh thì response từ server có thể trim bớt để tối ưu.
-
-Browser có giới hạn số lượng API call vào 1 domain tại cùng 1 thời điểm. VD với chrome mặc định là 6 requests 1 lúc. 
-Vd web có trang dashboard cần FE gọi 10 API 1 lúc và xử lý sẽ lag thì nên dựng 1 BFF cung 1 API cho FE gọi, bên trong gọi 10 API (Promise.all) và trả ra kết quả đã xử lý cho FE. FE chỉ cần lo render lên UI.
-VD: NextJS client ---Call BFF---> NextJS API ---Call---> 10 API services in server.
-=> Thực tế chỉ dùng vậy khi tiện (SSR), với case khác có thể viết API gom ở ngay server gốc được. Lưu ý chỉ tối ưu khi thực sự gặp vấn đề về performance
+Vd web có trang dashboard cần FE gọi 10 API 1 lúc và xử lý sẽ lag thì nên dựng 1 BFF server cung 1 API cho FE gọi, bên trong gọi 10 API (Promise.all) và trả ra kết quả đã xử lý cho FE. FE chỉ cần lo render lên UI.
+VD: NextJS client ---Call BFF---> NextJS API ---Call---> 10 API services in BE server.
+=> Thực tế nextjs dùng vậy cho tiện SSR, với case khác có thể viết API gom ở ngay server gốc được. Lưu ý chỉ tối ưu khi thực sự gặp vấn đề về performance
 
 
 
-# Microservice basic
+# Microservice là gì
 Mô hình chia ra ứng dụng lớn thành nhiều module nhỏ, thay vì để nguyên khối. Các mô đun có thể được viết bằng nhiều ngôn ngữ khác nhau và tương tác thông qua API. Vì mỗi mô đun chỉ lo các tính năng riêng nhỏ nên code đơn giản.
+Microservice cũng chỉ việc chia ra nhiều server nhỏ lo các chức năng riêng biệt hợp lại với nhau thành 1 hệ thống lớn.
 
 Ngày xưa: Đặt hàng ---> Xử lý [100ms có hàng] ---> Mua hàng
 Ngày nay: Đặt hàng --> Xử lý [100ms check giảm giá] [200ms tích điểm] [100ms hội viên] [...] --> Mua hàng
@@ -242,8 +206,11 @@ Ngày nay: Đặt hàng --> Xử lý [100ms check giảm giá] [200ms tích đi�
             |  |     |    \ 
             v  v     v      v
       [100ms][200ms][100ms] [...]
+Database, cache, messsagequeue là 3 loại storage lưu data buộc phải có trong các hệ thống lớn. VD ActiveMQ, RabbitMQ giúp triển khai mô hình MessageQueue cho microservices
 
-VD ActiveMQ, RabbitMQ giúp triển khai mô hình MessageQueue cho microservices => Database, cache, messsagequeue là 3 loại storage lưu data buộc phải có trong các hệ thống lớn. 
+
+
+
 
 
 

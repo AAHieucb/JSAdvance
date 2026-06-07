@@ -210,22 +210,18 @@ Database, cache, messsagequeue là 3 loại storage lưu data buộc phải có 
 
 
 
-
-
-
-
 # Các mô hình microservice với API Gateway
 API Gateway cũng chỉ là 1 cục trung gian xử lý các thứ, coi là 1 loại reverse proxy thôi. Nó là 1 endpoint duy nhất mà khách hàng giao tiếp, giúp che giấu sự phức tạp của kiến trúc microservices bên dưới.
 
--> Direct Client-To-Microservices: Client App[Mobile, web] ---> [Microservice1 chạy container WebAPI, Microservice2 WebAPI, Microservice3 WebAPI]
-=> Client phải gọi trực tiếp qua API gặp nhiều vấn đề
+- Direct Client-To-Microservices: Client App[Mobile, web] ---> [Microservice1 chạy container WebAPI, Microservice2 WebAPI, Microservice3 WebAPI]
+Client phải gọi trực tiếp qua API gặp nhiều vấn đề
 
--> 1 API gateway
+- 1 API gateway
 Mobile ----------------------------------> |             | ---> Microservices WebAPI1
 WebApp ----------------------------------> | API Gateway | ---> Microservices WebAPI2
 Traditional Web HTML <---> Server MVC _______/^            ---> Microservices WebAPI3
 
--> Multiple API gateway BFF
+- Multiple API gateway BFF
 Mobile ---------------------------> API Gateway Mobile ___> [Microservice1, Microservice2, Microservice3]
 WebApp ---------------------------> API Gateway Web ___________/^
 Traditional Web <---> Server MVC ______/^      
@@ -233,11 +229,10 @@ Traditional Web <---> Server MVC ______/^
 -> API gateway khác load balancer về phạm vi:
 Load balancer chỉ làm công việc phân phối tải khi dịch vụ được duplicate ở nhiều nơi để giảm tải cho 1 server đỡ xử lý quá nhiều request.
 API gateway điều hướng request tới các dịch vụ khác nhau. Các dịch vụ này có thể cùng 1 server or ở các server riêng. 
-
 VD có thể để api gateway xác thực, ghi log, bảo mật, cache nữa. Còn server chỉ xử lý logic core bên trong thôi.
 VD reverse proxy có thể chặn DDoS nhưng API gateway thường k làm
 
--> VD API Gateway: mọi công việc trước khi thực sự xử lý ở các hệ thống riêng đều qua API gateway => ref tới "APIGateway.gif"
+VD API Gateway: mọi công việc trước khi thực sự xử lý ở các hệ thống riêng đều qua API gateway => ref tới "APIGateway.gif"
 Call http request -> API gateway bắt đầu bằng việc validate request -> chạy allow-list/deny-list check chỉ request đúng mới qua -> APIGateway làm việc với identity provider để authen và authorization -> check rate limit, nếu quá rate limit sẽ bị reject -> Dynamic routing thông qua path matching cái request để tìm đúng service thực hiện request -> transform request thành protocol hợp lý và gửi trả cho backend microservice thực hiện -> song song với việc thực thi đó, api gateway cũng check error (qua hệ thống log monitor với ElasticSearch) và tăng tốc với cache data (qua redis).
 
 -> Tạo API gateway bằng nodejs
@@ -246,17 +241,22 @@ Config file yaml để phân phối request của người dùng đến các url
 
 
 
-
-
-#*** Hệ phân tán nhiều server thì query cái nào
-Vấn đề muôn thuở của hệ phân tán khi dùng distributed cache, hoặc có nhiều api server và mỗi server dùng 1 cache riêng. Client query 1 server cache lưu có data rồi nhưng request sau query server khác không có phải get lại dẫn đến 1 data lưu ở nhiều server. 
+#*** Xử lý phân tán cache thì query vào đâu
+Dùng distributed cache thì k sao, nhưng nếu nhiều api server và mỗi server dùng 1 cache riêng thì client query 1 server cache lưu có data rồi nhưng request sau query server khác không có phải get lại dẫn đến 1 data lưu ở nhiều server. 
 
 Giải pháp là dùng pp Hashing hoặc Sticky Sessions thay cho Round Robin, Least Connections. 
-Hashing sẽ hash thông tin client để lấy ra 1 server khiến cho mọi request của client luôn tới 1 server duy nhất. Nhưng dùng Hashing gặp vấn đề khi server list biến động, lúc nào client cũng gọi vào server đó kể cả khi nó sập hay bị xoá rồi dẫn đến lỗi. Do đó nên dùng:
+Normal hashing sẽ hash thông tin client để lấy ra 1 server khiến cho mọi request của client luôn tới 1 server duy nhất. Nhưng dùng Hashing gặp vấn đề khi server list biến động, lúc nào client cũng gọi vào server đó kể cả khi nó sập hay bị xoá rồi dẫn đến lỗi. Do đó nên dùng:
+
 - Consistent Hashing: 
 Dùng 1 hàm hash an toàn cho id của node và id của data record. Ra 1 giá trị thì nhét vào 1 vòng tròn. Mỗi key sẽ gắn với node gần nhất kề nó theo chiều kim. Vd:
 0 ---- A ---- key1 ---- B ---- key2 ---- E ---- key3 ---- C ---- key4 ---- D ---- 2^32-1
-Key 1 gắn node B, key 2 gắn node E. Nếu ngừoi dùng muốn query data có key 4 thì họ query vào cache server D. Thêm xoá server không sợ lỗi mà lại nhanh.
+Key 1 gắn node B, key 2 gắn node E. Nếu ngừoi dùng muốn query data nằm trong khoảng key 4 thì họ query vào cache server D.
+VD hash 32bit: 0 ---------------------- 2^32 - 1
+Vòng tròn 0 -----1000(A)-----2500(key1)-----3000(B)-----6500(key2)-----7000(C)-----10000(0) khi thêm xoá node thì dịch chuyển data rất dễ vì luôn chỉ cần dịch 2 node.
+
+Các node có thể phân bố data không đều nếu chỉ hash id của server: A --------------------- B - C -------- D
+Giải pháp là hash(server, index) ngẫu nhiên và chọn ra các khoảng đều trên vòng tròn, nhưng vẫn bị lệch khi thêm bớt server nhiều lần. Giải pháp là virtual node.
+
 - Rendezvous Hashing: 
 Muốn tìm node nào lưu record hiện tại, ta tính weight của data với từng node: weight(key, node) = hash(key of record + node_id) => Node có giá trị cao nhất sẽ lưu record đó.
 => 2 pp này k những phân tán server mà còn phân tán data. Thực tế chỉ cần check nếu 1 server sập thì request vào fallback server tiếp theo cũng được.
@@ -264,7 +264,10 @@ Muốn tìm node nào lưu record hiện tại, ta tính weight của data với
 -> Nhược điểm của dedicated server là k thể horizontal scaling, buộc phải mua thêm server ở nơi khác để horizontal scaling rất đắt.
 Còn thuê VPS thì rất dễ. VD mua 1 VPS trên digital ocean và chạy server. Bh muốn scale lên 2 server ở Sing và Mỹ. Các bước tối thiểu phải xử lý là: Dựng 2 servers lên; Cấu hình DNS trỏ tới từng server; Xử lý fail over, 1 server sập sẽ đổ traffic vào server còn lại.
 
--> 
+ 
+
+
+
 
 
 --> Cách đơn giản hơn là dùng Cloudflare proxy làm load balancer. Nó có hàng trăm điểm phân phối toàn cầu, request tới nó trước rồi tự phân phối đến server gần nhất 

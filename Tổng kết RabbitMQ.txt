@@ -96,3 +96,213 @@ Ta cấu hình để khi queue chính có message lỗi hoặc khi server thực
 - RabbitMQ có các công cụ thống kê, giám sát đi kèm với giao diện web. DB chỉ dùng SQL thao tác thôi
 
 
+
+
+
+
+
+
+
+Queue binding Topic subscription Dead letter queue Lock renewal Message scheduling Giải thích từng cái
+Các khái niệm này thường xuất hiện trong hệ thống message queue/pub-sub như RabbitMQ, Apache Kafka, Azure Service Bus, Amazon SQS.
+Mình giải thích theo kiểu dễ hình dung:
+
+1. Queue Binding
+Là gì?
+
+Binding = “nối” queue với exchange/topic để message đi đúng nơi.
+
+Ví dụ:
+
+Producer gửi message vào Exchange
+Exchange quyết định queue nào nhận message
+Binding chính là luật kết nối đó
+Ví dụ RabbitMQ
+Producer
+   ↓
+Exchange
+   ↓
+Binding rule
+   ↓
+Queue
+
+Binding có thể dựa trên:
+
+routing key
+pattern
+wildcard
+
+Ví dụ:
+
+Queue A bind với routing key = order.created
+
+=> Chỉ nhận message có key order.created
+
+Dễ hiểu hơn
+
+Giống:
+
+Exchange = bưu điện
+Queue = hộp thư
+Binding = quy tắc phát thư
+2. Topic Subscription
+Là gì?
+
+Subscription = đăng ký nhận message theo topic.
+
+Consumer nói:
+
+"Tôi muốn nhận mọi message về payment"
+Ví dụ
+
+Topics:
+
+payment.created
+payment.failed
+order.created
+
+Consumer subscribe:
+
+payment.*
+
+=> nhận:
+
+payment.created
+payment.failed
+Khác Queue Binding thế nào?
+Queue binding = cách queue được nối
+Topic subscription = consumer đăng ký nhận topic
+
+Nhiều hệ thống dùng 2 khái niệm gần giống nhau.
+
+3. Dead Letter Queue (DLQ)
+Là gì?
+
+Queue đặc biệt chứa message bị lỗi không xử lý được.
+
+Khi nào message vào DLQ?
+
+Ví dụ:
+
+Consumer crash nhiều lần
+Retry quá số lần cho phép
+Message invalid
+Timeout
+Flow
+Main Queue
+   ↓
+Consumer fail
+   ↓ retry fail
+Dead Letter Queue
+Tại sao cần?
+
+Để:
+
+không mất message
+debug lỗi
+xử lý lại sau
+Ví dụ thực tế
+
+Message:
+
+{
+  "userId": null
+}
+
+API xử lý luôn lỗi.
+
+Sau 5 lần retry:
+
+=> chuyển vào DLQ
+
+Developer kiểm tra DLQ để fix.
+
+4. Lock Renewal
+Là gì?
+
+Khi consumer lấy message, hệ thống “lock” message đó để consumer khác không xử lý trùng.
+
+Nếu xử lý lâu:
+
+lock có thể hết hạn
+message bị consumer khác lấy lại
+
+Lock renewal = gia hạn lock.
+
+Ví dụ
+
+Message cần xử lý 5 phút.
+
+Nhưng lock chỉ 30 giây.
+
+Consumer phải:
+
+renew lock
+renew lock
+renew lock
+
+để giữ quyền xử lý.
+
+Nếu không renew?
+
+Có thể:
+
+message bị xử lý 2 lần
+duplicate data
+Hay gặp ở
+Azure Service Bus
+SQS visibility timeout extension
+5. Message Scheduling
+Là gì?
+
+Gửi message nhưng chưa xử lý ngay.
+
+Hệ thống sẽ delay đến thời điểm định trước.
+
+Ví dụ
+Gửi email sau 1 giờ
+
+Producer:
+
+schedule message at 10:00
+
+Queue chỉ deliver lúc 10:00.
+
+Use cases
+Retry delayed
+Fail → retry sau 5 phút
+Reminder
+Nhắc lịch ngày mai
+Delayed job
+Xử lý đơn hàng sau 30 phút
+Tổng kết nhanh
+Khái niệm	Ý nghĩa
+Queue Binding	Nối queue với exchange/topic
+Topic Subscription	Đăng ký nhận topic
+Dead Letter Queue	Queue chứa message lỗi
+Lock Renewal	Gia hạn quyền xử lý message
+Message Scheduling	Hẹn giờ gửi/xử lý message
+Ví dụ flow thực tế
+Order Service
+   ↓
+Topic: order.created
+   ↓
+Queue Binding
+   ↓
+Email Queue
+   ↓
+Consumer xử lý email
+
+Nếu lỗi:
+   ↓
+Retry
+   ↓
+DLQ
+
+Nếu xử lý lâu:
+   ↓
+Lock renewal
+
+Nếu muốn gửi email sau:
+   ↓
+Message scheduling

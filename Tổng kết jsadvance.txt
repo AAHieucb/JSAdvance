@@ -235,6 +235,9 @@ VD reverse proxy có thể chặn DDoS nhưng API gateway thường k làm
 VD API Gateway: mọi công việc trước khi thực sự xử lý ở các hệ thống riêng đều qua API gateway => ref tới "APIGateway.gif"
 Call http request -> API gateway bắt đầu bằng việc validate request -> chạy allow-list/deny-list check chỉ request đúng mới qua -> APIGateway làm việc với identity provider để authen và authorization -> check rate limit, nếu quá rate limit sẽ bị reject -> Dynamic routing thông qua path matching cái request để tìm đúng service thực hiện request -> transform request thành protocol hợp lý và gửi trả cho backend microservice thực hiện -> song song với việc thực thi đó, api gateway cũng check error (qua hệ thống log monitor với ElasticSearch) và tăng tốc với cache data (qua redis).
 
+--> Trong hệ thống lớn, khi nhiều service độc lập gọi lẫn nhau, mỗi log đến từ 1 request phải có cùng 1 traceId. TraceId duy nhất của 1 request giúp debug dễ hơn và duy trì dù gọi qua nhiều server khác nhau. 
+Implment khi nhận 1 request và ghi log sẽ lấy traceid được lưu trong request đó nếu k có mới tạo 1 Guid mới.
+
 -> Tạo API gateway bằng nodejs
 Có package npm express-gateway giúp chạy gateway cho server express nodejs luôn
 Config file yaml để phân phối request của người dùng đến các url xử lý dịch vụ khác nhau
@@ -254,297 +257,101 @@ Key 1 gắn node B, key 2 gắn node E. Nếu ngừoi dùng muốn query data n�
 VD hash 32bit: 0 ---------------------- 2^32 - 1
 Vòng tròn 0 -----1000(A)-----2500(key1)-----3000(B)-----6500(key2)-----7000(C)-----10000(0) khi thêm xoá node thì dịch chuyển data rất dễ vì luôn chỉ cần dịch 2 node.
 
-Các node có thể phân bố data không đều nếu chỉ hash id của server: A --------------------- B - C -------- D
-Giải pháp là hash(server, index) ngẫu nhiên và chọn ra các khoảng đều trên vòng tròn, nhưng vẫn bị lệch khi thêm bớt server nhiều lần. Giải pháp là virtual node.
+Các node có thể phân bố data không đều nếu chỉ hash id của server: A -------------------- B -- C -------- D
+Giải pháp là hash(server, index) ngẫu nhiên lưu vào metadata db và chọn ra các khoảng đều trên vòng tròn, nhưng vẫn bị lệch khi thêm bớt server nhiều lần. Giải pháp là virtual node.
+VD: 
+A = máy mạnh
+B = máy trung bình
+C = máy yếu
+thì chia:
+A : 200 vnode
+B : 100 vnode
+C : 50 vnode
+Chia so le server A chứa A1 A2 A3 ta sinh hàng loạt token và chọn token so le:
+A1 B1 C1 A2 C2 B2 C3 A3 B3
+Khi thêm D thì D cắt 1 ít từ nhiều node nhỏ giảm 1 lượng, còn lại vẫn cân bằng:
+A1 B1 D1 C1 A2 D2 C2 B2 C3 A3 D3 B3
+=> Lưu ý chỉ có ích với kiểu db key-value. Nếu query condition phức tạp, k ai dùng consistent hashing để chia cả mà có db partition.
 
 - Rendezvous Hashing: 
 Muốn tìm node nào lưu record hiện tại, ta tính weight của data với từng node: weight(key, node) = hash(key of record + node_id) => Node có giá trị cao nhất sẽ lưu record đó.
 => 2 pp này k những phân tán server mà còn phân tán data. Thực tế chỉ cần check nếu 1 server sập thì request vào fallback server tiếp theo cũng được.
 
--> Nhược điểm của dedicated server là k thể horizontal scaling, buộc phải mua thêm server ở nơi khác để horizontal scaling rất đắt.
-Còn thuê VPS thì rất dễ. VD mua 1 VPS trên digital ocean và chạy server. Bh muốn scale lên 2 server ở Sing và Mỹ. Các bước tối thiểu phải xử lý là: Dựng 2 servers lên; Cấu hình DNS trỏ tới từng server; Xử lý fail over, 1 server sập sẽ đổ traffic vào server còn lại.
-
- 
+-> Nhược điểm của dedicated server là khó horizontal scaling, việc mua tự lắp đặt thêm server rất mệt.
+Nếu thuê VPS thì rất dễ vì nó làm hộ việc scale. Các bước tối thiểu phải xử lý là: dựng 2 servers, cấu hình DNS trỏ tới từng server, xử lý fail over để 1 server sập sẽ đổ traffic vào server còn lại.
 
 
 
+# Vấn đề load balancer
+Load balancer phân phối tải mà lại có 1 endpoint thì các request ở xa load balancer vẫn bị lâu như thường => Thực tế là đang hiểu sai vai trò của load balancer. Nếu chia ra vài khu vực trên thế giới, môi khu có 1 server thì chả cần load balancer làm gì. Nó chỉ dùng khi 1 khu vực có nhiều server và cần route trong khu vực đó, sau khi horizontal scaling khu vực đó để nó chịu tải tốt hơn. 
+Còn muốn sharding mỗi khu vực 1 cụm server và routing giữa các khu vực phải tự implement 1 server duy nhất lưu trạng thái user id có data trong cụm server nào. Routing server này phải phân bố nhiều nơi khắp thế giới để 1 user sang vùng khác vẫn routing về đúng vùng của họ. Có thể dùng cloudflare proxy vì nó phân phối toàn cầu và có sẵn cache.
+DNS-based routing k liên quan là pp route các server giữa các vùng khác nhau dựa trên IP, người dùng có thể dùng VPN để fake vùng nên k dựa vào DNS để check.
 
-
---> Cách đơn giản hơn là dùng Cloudflare proxy làm load balancer. Nó có hàng trăm điểm phân phối toàn cầu, request tới nó trước rồi tự phân phối đến server gần nhất 
-Nó cũng có sẵn cache.
-hoặc trỏ tới 1 load balancer nếu dùng load balancer
-
-
--> Load balancer phân phối tải mà lại có 1 endpoint thì các request ở xa load balancer vẫn bị lâu như thường. Thực tế ta đang hiểu sai vai trò của load balancer. Nếu chỉ có vài khu vực, môi khu có 1 server thì chả cần LB làm gì. LB chỉ dùng khi 1 khu vực có nhiều server và cần route trong khu vực đó. Tức ta đã tăng số lượng server ở khu vực đó để nó chịu tải tốt hơn. 
-Chứ ít server thì dùng DNS-based routing trỏ đến các server được đã là đủ r.
-
-
-
--> Nếu chỉ dùng 1 db duy nhất (ở sing) thì mọi request tới server ở Mỹ cũng cần gọi vào db ở sing để lấy bị lâu. 
-Read replica => ghi ít thì ok vì chỉ có 1 db ghi ở xa sẽ lâu khi update. 
-Chia độc lập customer => đảm bảo mọi user ở Mỹ sẽ kbh liên can đến data ở Sing. Nếu user đi từ Mỹ qua Sing thì query vẫn về Mỹ và bị lâu. 
-Multi-master replica => đọc ghi đều nhanh nhưng cấu hình phức tạp. Phải có cơ chế fail over, cơ chế đồng bộ giữa mọi database, cơ chế xử lý conflict. VD dùng safe writes để đảm bảo dữ liệu ghi được xác nhận từ ít nhất 2 node trước khi commit.
+-> Nếu chỉ dùng 1 db duy nhất (ở sing) thì mọi request ở Mỹ cũng cần gọi vào db ở sing để lấy bị lâu. 
+- Read replica ở các vùng => chỉ dùng khi ghi ít vì ở xa sẽ lâu khi update. 
+- Multi-master replica đọc ghi đều nhanh nhưng cấu hình phức tạp. Phải có cơ chế fail over, cơ chế đồng bộ database, xử lý conflict. VD dùng safe writes để đảm bảo dữ liệu ghi được xác nhận từ ít nhất 2 node trước khi commit, hoặc nhiều thuật toán đa số khác.
+- Sharding data đảm bảo mọi user ở Mỹ sẽ kbh liên can đến data ở Sing. Chấp nhận case user đi từ Mỹ qua Sing thì query vẫn về Mỹ và bị lâu
 Có thể dùng database proxy để điều hướng tới db gần nhất, két hợp cache.
-=> Thường công ty lớn dùng kiểu chia customer độc lập chứ multi-master rất ít khi dùng. Vì đọc ghi nhanh từ mọi nơi trên thế giới mà update nhiều dễ conflict thì rất hiếm.
-
-
-- Dự án k nặng thì deploy luôn database và server chung 1 VPS cho nhanh.
-
-
-
-- Trong hệ thống lớn, khi nhiều service độc lập gọi lẫn nhau, mỗi log đến từ 1 request sẽ có cùng 1 traceId. 
-TraceId duy nhất của 1 request giúp debug dễ hơn, thậm chí được duy trì dù gọi qua nhiều services khác nhau. 
-Khi nhận 1 request và ghi log, sẽ lấy traceid được lưu trong request đó. Nếu k có mới tạo 1 Guid mới.
+=> Thường công ty lớn thường sharding data độc lập giữa customer chứ multi-master rất ít khi dùng. Vì đọc ghi nhanh từ mọi nơi trên thế giới mà update nhiều dễ conflict thì rất hiếm.
+- Các dự án nhỏ thường dùng db server cache chung 1 VPS cho nhanh, khi có nhiều người mói scale lên.
 
 
 
-
--> Notification system: Giải quyết vấn đề 1 triệu shop gửi notification, 1 triệu user nhận được notification cùng lúc. Tốc độ cao và nhanh. Chắc chắn phải push notification tới user. Chỉ có MQ là đảm bảo tốc độ cao và không mất dữ liệu, không duplicate dữ liệu, đúng thứ tự.
-
+# Notification system
+Usecase: Giải quyết vấn đề 1 triệu shop gửi notification hoặc 1 triệu user nhận được notification cùng lúc, tốc độ phải nhanh. 
+Phải dùng MQ để k mất dữ liệu, tốc độ cao, k duplicate dữ liệu, đúng thứ tự.
+Phải phân chia đảm bảo tốc độ push notification đạt tối đa khi có nhiều user:
 Shop -> new product -> MessageQueue 1 -> User id từ 0 tới 1000
                     -> MessageQueue 2 -> User id từ 1000 tới 2000
-=> Phân chia đảm bảo tốc độ push notification đạt tối đa khi có nhiều user
+Phân tích: Shop -> new product -> system.center.notification -> MQ -> 1,000,000 users
+
+Về business: notification database sẽ lưu tất cả notification của mọi shop. Trong 1 triệu user, user nào thường xuyên online, ta sẽ push notification tới cho họ. User nào online ít thì khi nào online, họ phải tự vào notification center mà pull về. Riêng trường hợp mã giảm giá hay tin quan trọng, sẽ phải push tới mọi user ngay.
+
+Tại sao lại dùng 1 crawljob lấy data từ db của system.center.notification gửi tới MQ mà không gửi mẹ từ shop tới MQ luôn? 
+Vì cần tính toán tới các case khi crash hệ thống. Trong trường hợp này cần đảm bảo khi 1 shop gửi notification tới user thành công, chắc chắn notification đó k bị mất khi crash hệ thống, nếu crash thì phải lưu là chưa gửi hoặc gửi k thành công. Bởi vì việc gửi tới 1 triệu user phải làm từ từ, không thể chờ gửi hết 1 triệu mới báo thành công được. Do đó thành công ở đây là lưu thành công vào system.center.notification để server rảnh làm việc khác, sau đó crawljob mới lấy từ db ra gửi vào MQ. 
+Phải có cơ chế retry khi hệ thống khôi phục crash và chạy tiếp từ chỗ cũ gửi cho các user còn lại.
+
+Việc phân phối trực tiếp từ system.center.notification tới database của user, so với gửi vào MQ và MQ gửi tới db 1 triệu user có điểm lợi gì?
+MQ cung khả năng đảm bảo tin nhắn không bị mất. Ví dụ đang chạy for loop duyệt 1 triệu user để update db, chẳng may sập server phát sẽ mất. Để đảm bảo thì mỗi lần gửi ta lại phải update database từng user isSent=true, khởi động lại hệ thống sẽ gửi tiếp cho các user isSent=false thì rất phức tạp. Còn MQ kiểm soát tự động hết.
+MQ tùy biến có thể thêm worker để xử lý tin nhắn từ queue mà không cần thay đổi cơ sở hạ tầng của MQ. Kiểm soát số lượng tin nhắn worker xử lý song song, VD nếu CPU tốn quá thì giảm đi 1 chút để hoạt động trơn tru. Tách biệt quá trình tạo thông báo và gửi thông báo. Nếu server crash, MQ vẫn hoạt động bth.
+Cái crawljob ở đây cũng chỉ việc server subscribe vào queue với 1 số lượng song song bị giới hạn.
+
+
+
+# Bài toán xây dựng hệ thống AI optimize storage
+Usecase: server detect các file lâu không dùng, file duplicate, file rác .cache và user có thể hỏi trực tiếp về bộ nhớ và server recommend các action để chọn.
+
+Có nhiều kiểu xây ứng dụng AI:
+- Hệ thống thủ công dựa trên thuật toán tự implement như minimax hay heuristic. Tự tìm file và phương án tối ưu dựa trên code thuần túy. VD AI chơi cờ.
+Còn AI sẽ dùng vào các mục đích như học từ hành vi người dùng và đề xuất các option cá nhân hóa, các file thường xóa, option thường dùng (vừa dùng vừa train). Hoặc đọc nội dung và dán nhãn các file junk, file quan trọng, file duplicate.
+- Dùng model AI thực sự. Nó khác thuật toán ở chỗ agent có thể đưa ra cảm quan của riêng nó dựa vào model nó được train.
+Có thể tự train model với owned dataset, dùng AI train sẵn. Nhiều API có sẵn cứ input là cho ra output luôn.
+
+Luồng cơ bản của hệ thống build dựa trên AI:
+- Dựa vào input cho AI tìm ra mục đích của user muốn xóa storage, đưa ra gợi ý, general question hay gì. Thu thập data từ db.
+Rào trước tất cả hành động liên quan đến storage mà user có thể hỏi.
+Dùng AI làm mọi thứ kể cả hỏi storage cost hay đưa ra gợi ý.
+- Nếu k set up AI available hoặc catch fail thì fallback về tự build response, k thì trả về response default hoặc lỗi.
+- Nếu setup AI, cần tự build request và parse response: System prompt + RAG context + userinput + các message trước -> JSON response
+System prompt bảo agent trả về resopnse duy nhất dạng JSON như nào thì parse y dạng đó. Response parse từ { đầu tiên đến } cuối cùng
+RAG context là dữ liệu bên ngoài do AI tự tra cứu thêm
+Các message trước trong đoạn hội thoại có thể config lấy 10 hoặc tùy.
+- AI có thể đưa ra action gợi ý và trigger action đó. VD trên window có senmatic kernel, AI có thể đưa ra tên hàm và arguments để call tới 1 API xử lý, chờ response.
+
+
+
+# Các service hệ thống lớn
+- Metadata service:
+Có thể CRUD metadata, gán cho object, filter sort object theo metadata.
+Metadata có nhiều loại như: text, department của user, lookup metadata khác, yes no, link address, time.
+- Job queue: thường dùng hệ thống bên thứ 3 như RabbitM, topic name lưu vào file config
+- Timer, schedule job:
+Timer luôn chạy, mỗi khi deploy mới restart lại thôi. Timer lo việc upgrade db, data upgrade, bắt các job và chạy job liên tục, loop retention data. Cơ chế job chạy như nào dựa vào bảng Schedule lưu cron expression. 
+- Worker: 
+Worker subscribe vào queue và chạy multithread or multiprocess để thực hiện task bất đồng bộ
+- Workflow: 
+Thực hiện định kỳ bao lâu 1 lần, thực hiện action gì thay mặt user nào, gửi mail cho ai khi run, lồng điều kiện if else phức tạp, các action thực hiện liên tục và có ảnh hưởng đến nhau.
+Thực hiện action khi có sự kiện gì trigger thì lưu vào db và trigger hàm tương ứng.
 
-Phân tích:
-Shop -> new product -> system.center.notification -> MQ -> 1,000,000 users
-
-Về business: Notification center là database sẽ lưu tất cả notification của mọi shop. Trong 1 triệu user, user nào thường xuyên online, ta sẽ push notification tới cho họ. User nào online ít thì khi nào online, họ phải tự vào notification center mà pull về. Riêng trường hợp mã giảm giá hay tin quan trọng, sẽ phải push tới mọi user.
-
-CrawlJob: Tại sao lại dùng 1 crawljob lấy data từ db của system.center.notification gửi tới MQ mà không gửi mẹ từ shop tới MQ luôn? 
-Ta cần tính toán tới việc phân tác các case khi crash hệ thống. Trong trường hợp này cần đảm bảo khi 1 shop gửi notification tới user thành công, chắc chắn notification đó k bị mất khi crash hệ thống, nếu crash thì phải là chưa gửi chứ không phải là gửi thành công nhưng lại crash. Bởi vì việc gửi tới 1 triệu user phải làm từ từ, không thể chờ gửi hết 1 triệu mới báo thành công được. Do đó thành công ở đây là lưu thành công vào system.center.notification. Sau đó cần có 1 crawljob lấy từ db ra gửi vào MQ. 
-Lại phải đảm bảo ở từng bước này, hệ thống crash tiếp nhưng khi khởi động lại vẫn chạy tiếp từ chỗ cũ. CrawlJob chỉ cần check trường isSent = false thì gửi tiếp thôi.
-
-Việc phân phối trực tiếp từ system.center.notification tới database của user, so với gửi vào MQ và MQ gửi tới 1 triệu user có điểm lợi gì?
-MQ cung khả năng đảm bảo tin nhắn không bị mất, mỗi thông báo chắc chắn sẽ được gửi đi ngay cả khi hệ thống lỗi. Ví dụ ta đang chạy for loop duyệt 1 triệu user để update db, chẳng may sập server phát sẽ mất. Để đảm bảo thì mỗi lần gửi user ta lại phải update database là đã gửi rồi, khởi động lại hệ thống sẽ check k gửi lại user đó nữa sẽ rất phức tạp nếu tự impleemnt. Nhưng MQ thì sập, khởi động lại sẽ tiếp tục từ chỗ dừng lại lần trước.
-MQ cung khả năng xử lý tùy biến, ta có thể thêm workder để xử lý tin nhắn từ queue mà không cần thay đổi cơ sở hạ tầng của MQ. Kiểm soát số lượng tin nhắn worker xử lý song song, VD nếu CPU tốn quá thì giảm đi 1 chút để hoạt động trơn tru. Tách biệt quá trình tạo thông báo và gửi thông báo. Nếu server crash, MQ vẫn hoạt động bth, vẫn gửi tiếp các tin nhắn trong queue tới user.
-MQ cung khả năng xử lý song song, nên nhớ chạy for loop sẽ xử lý tuần tự, k dùng MQ ta sẽ phải tự implement bất đồng bộ việc này khá mệt
-
-Implement database cho noti.center -> implement MQ -> implement crawljob -> Implement server gửi từ MQ sang db user
-
-
-
-
-
-Queue binding Topic subscription Dead letter queue Lock renewal Message scheduling Giải thích từng cái
-Các khái niệm này thường xuất hiện trong hệ thống message queue/pub-sub như RabbitMQ, Apache Kafka, Azure Service Bus, Amazon SQS.
-Mình giải thích theo kiểu dễ hình dung:
-
-1. Queue Binding
-Là gì?
-
-Binding = “nối” queue với exchange/topic để message đi đúng nơi.
-
-Ví dụ:
-
-Producer gửi message vào Exchange
-Exchange quyết định queue nào nhận message
-Binding chính là luật kết nối đó
-Ví dụ RabbitMQ
-Producer
-   ↓
-Exchange
-   ↓
-Binding rule
-   ↓
-Queue
-
-Binding có thể dựa trên:
-
-routing key
-pattern
-wildcard
-
-Ví dụ:
-
-Queue A bind với routing key = order.created
-
-=> Chỉ nhận message có key order.created
-
-Dễ hiểu hơn
-
-Giống:
-
-Exchange = bưu điện
-Queue = hộp thư
-Binding = quy tắc phát thư
-2. Topic Subscription
-Là gì?
-
-Subscription = đăng ký nhận message theo topic.
-
-Consumer nói:
-
-"Tôi muốn nhận mọi message về payment"
-Ví dụ
-
-Topics:
-
-payment.created
-payment.failed
-order.created
-
-Consumer subscribe:
-
-payment.*
-
-=> nhận:
-
-payment.created
-payment.failed
-Khác Queue Binding thế nào?
-Queue binding = cách queue được nối
-Topic subscription = consumer đăng ký nhận topic
-
-Nhiều hệ thống dùng 2 khái niệm gần giống nhau.
-
-3. Dead Letter Queue (DLQ)
-Là gì?
-
-Queue đặc biệt chứa message bị lỗi không xử lý được.
-
-Khi nào message vào DLQ?
-
-Ví dụ:
-
-Consumer crash nhiều lần
-Retry quá số lần cho phép
-Message invalid
-Timeout
-Flow
-Main Queue
-   ↓
-Consumer fail
-   ↓ retry fail
-Dead Letter Queue
-Tại sao cần?
-
-Để:
-
-không mất message
-debug lỗi
-xử lý lại sau
-Ví dụ thực tế
-
-Message:
-
-{
-  "userId": null
-}
-
-API xử lý luôn lỗi.
-
-Sau 5 lần retry:
-
-=> chuyển vào DLQ
-
-Developer kiểm tra DLQ để fix.
-
-4. Lock Renewal
-Là gì?
-
-Khi consumer lấy message, hệ thống “lock” message đó để consumer khác không xử lý trùng.
-
-Nếu xử lý lâu:
-
-lock có thể hết hạn
-message bị consumer khác lấy lại
-
-Lock renewal = gia hạn lock.
-
-Ví dụ
-
-Message cần xử lý 5 phút.
-
-Nhưng lock chỉ 30 giây.
-
-Consumer phải:
-
-renew lock
-renew lock
-renew lock
-
-để giữ quyền xử lý.
-
-Nếu không renew?
-
-Có thể:
-
-message bị xử lý 2 lần
-duplicate data
-Hay gặp ở
-Azure Service Bus
-SQS visibility timeout extension
-5. Message Scheduling
-Là gì?
-
-Gửi message nhưng chưa xử lý ngay.
-
-Hệ thống sẽ delay đến thời điểm định trước.
-
-Ví dụ
-Gửi email sau 1 giờ
-
-Producer:
-
-schedule message at 10:00
-
-Queue chỉ deliver lúc 10:00.
-
-Use cases
-Retry delayed
-Fail → retry sau 5 phút
-Reminder
-Nhắc lịch ngày mai
-Delayed job
-Xử lý đơn hàng sau 30 phút
-Tổng kết nhanh
-Khái niệm	Ý nghĩa
-Queue Binding	Nối queue với exchange/topic
-Topic Subscription	Đăng ký nhận topic
-Dead Letter Queue	Queue chứa message lỗi
-Lock Renewal	Gia hạn quyền xử lý message
-Message Scheduling	Hẹn giờ gửi/xử lý message
-Ví dụ flow thực tế
-Order Service
-   ↓
-Topic: order.created
-   ↓
-Queue Binding
-   ↓
-Email Queue
-   ↓
-Consumer xử lý email
-
-Nếu lỗi:
-   ↓
-Retry
-   ↓
-DLQ
-
-Nếu xử lý lâu:
-   ↓
-Lock renewal
-
-Nếu muốn gửi email sau:
-   ↓
-Message scheduling
-
-
-
-
-
-Metadata
-Job queue
-Timer, schedule
-Worker
-Workflow
-Blob file, communicate subscribe giữa enpower và aos.
-
-
--> Bài toán xây dựng hệ thống AI optimize storage. 
-Server detect các file lâu không sử dụng, các file duplicate, các file rác .cache. User có thể hỏi trực tiếp và yêu cầu hệ thống đưa ra các options để chọn và xoá các file thừa.
-Thực tế các hệ thống tối ưu như này không cần dùng AI, vì thuật toán tìm file và tìm ra các phương án tối ưu là code thuần tuý, giống kiểu Kmin AI chơi cờ cũng là tính các nước đi tối ưu nhưng vẫn gọi là dùng AI. 
-AI thực tế suy nghĩ trong usecase này chỉ dùng ở việc chat và hiểu ý của user. Đọc nội dung file và dán nhãn các file junk hay file quan trọng hay file thừa, duplicate. AI có thể học từ hành vi ngừoi dùng để đề xuất các options cá nhân hoá, các file thường xoá, các hướng đi optimize thường dùng.
-Có nền tảng cung AI đã train sẵn, cung API chỉ cần truyền input là return kết quả, hoặc cung model tự train theo tập data set của ta, hiếm khi nào tự xây AI model riêng.
 
 

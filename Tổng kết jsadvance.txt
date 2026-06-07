@@ -327,16 +327,23 @@ Còn AI sẽ dùng vào các mục đích như học từ hành vi người dùn
 - Dùng model AI thực sự. Nó khác thuật toán ở chỗ agent có thể đưa ra cảm quan của riêng nó dựa vào model nó được train.
 Có thể tự train model với owned dataset, dùng AI train sẵn. Nhiều API có sẵn cứ input là cho ra output luôn.
 
-Luồng cơ bản của hệ thống build dựa trên AI:
+Luồng cơ bản của hệ thống build theo pattern Agentic AI:
 - Dựa vào input cho AI tìm ra mục đích của user muốn xóa storage, đưa ra gợi ý, general question hay gì. Thu thập data từ db.
 Rào trước tất cả hành động liên quan đến storage mà user có thể hỏi.
 Dùng AI làm mọi thứ kể cả hỏi storage cost hay đưa ra gợi ý.
 - Nếu k set up AI available hoặc catch fail thì fallback về tự build response, k thì trả về response default hoặc lỗi.
 - Nếu setup AI, cần tự build request và parse response: System prompt + RAG context + userinput + các message trước -> JSON response
-System prompt bảo agent trả về resopnse duy nhất dạng JSON như nào thì parse y dạng đó. Response parse từ { đầu tiên đến } cuối cùng
+System prompt bảo agent trả về resopnse duy nhất dạng JSON như nào thì parse y dạng đó. Response parse từ { đầu tiên đến } cuối cùng. System prompt có thể viết ở file md riêng và có template.
 RAG context là dữ liệu bên ngoài do AI tự tra cứu thêm
 Các message trước trong đoạn hội thoại có thể config lấy 10 hoặc tùy.
 - AI có thể đưa ra action gợi ý và trigger action đó. VD trên window có senmatic kernel, AI có thể đưa ra tên hàm và arguments để call tới 1 API xử lý, chờ response.
+
+Luồng chung:
+- Nhập yêu cầu từ người dùng
+- AI phân loại intent (ý định người dùng)
+- Dựa vào intent để gọi các service khác nhau
+- AI xử lý logic phức tạp, ra quyết định, gọi tools
+- Trả về kết quả
 
 
 

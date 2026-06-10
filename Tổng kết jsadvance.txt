@@ -298,14 +298,18 @@ Có thể dùng database proxy để điều hướng tới db gần nhất, ké
 
 
 # Notification system
-Usecase: Giải quyết vấn đề 1 triệu shop gửi notification hoặc 1 triệu user nhận được notification cùng lúc, tốc độ phải nhanh. 
+Usecase: Giải quyết vấn đề 1M shop tạo ra sp mới, 1 số shop có 1M follower, mỗi sp mới sẽ notify cho tất cả followers.
+Mỗi user có 1 bảng user.notification lưu thông báo hiện lên UI. 
 Phải dùng MQ để k mất dữ liệu, tốc độ cao, k duplicate dữ liệu, đúng thứ tự.
 Phải phân chia đảm bảo tốc độ push notification đạt tối đa khi có nhiều user:
 Shop -> new product -> MessageQueue 1 -> User id từ 0 tới 1000
                     -> MessageQueue 2 -> User id từ 1000 tới 2000
-Phân tích: Shop -> new product -> system.center.notification -> MQ -> 1,000,000 users
+Phân tích: Shop -> new product -> system.center.notification -> MQ -> push vào user.notification của từng users
 
-Về business: notification database sẽ lưu tất cả notification của mọi shop. Trong 1 triệu user, user nào thường xuyên online, ta sẽ push notification tới cho họ. User nào online ít thì khi nào online, họ phải tự vào notification center mà pull về. Riêng trường hợp mã giảm giá hay tin quan trọng, sẽ phải push tới mọi user ngay.
+Push: Mỗi notification của 1 shop trong sys.center.notification lấy ra lưu vào 1M user.notification
+Pull: khi user login mới pull từ sys.center.notification vào user.notification, pull định kỳ khi online chịu delay 1 xíu.
+Shop có 1M follower mà push notification thì bị nặng. Có thể tạo 1 biến flag, mặc định là push notification, shop nào > 100K follower thì switch qua pull notification.
+Về business: Trong 1 triệu user, user nào thường xuyên online hoặc đang online thì sẽ push notification tới họ trước. User nào online ít thì khi nào online, họ phải tự vào notification center mà pull về. Riêng trường hợp mã giảm giá hay khách hàng thân thiét, khách hàng đăng ký nhận khuyến mãi, sẽ phải push tới user ngay.
 
 Tại sao lại dùng 1 crawljob lấy data từ db của system.center.notification gửi tới MQ mà không gửi mẹ từ shop tới MQ luôn? 
 Vì cần tính toán tới các case khi crash hệ thống. Trong trường hợp này cần đảm bảo khi 1 shop gửi notification tới user thành công, chắc chắn notification đó k bị mất khi crash hệ thống, nếu crash thì phải lưu là chưa gửi hoặc gửi k thành công. Bởi vì việc gửi tới 1 triệu user phải làm từ từ, không thể chờ gửi hết 1 triệu mới báo thành công được. Do đó thành công ở đây là lưu thành công vào system.center.notification để server rảnh làm việc khác, sau đó crawljob mới lấy từ db ra gửi vào MQ. 

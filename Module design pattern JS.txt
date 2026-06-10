@@ -1,39 +1,22 @@
--> Thiết kế hệ thống notifications
-Usercase có 1M shop tạo ra sp mới, 1 số shop có 1M follower. Mỗi sp mới sẽ notify cho tất cả followers. Mỗi user có 1 bảng user.notification lưu thông báo hiện hết trên UI. 
-Mỗi khi shop tạo sp mới hoặc có mã giảm giá sẽ sinh ra notification lưu vào bảng sys.center.notification chung, từ đó push vào các user.notification.
-Tức là Shop -> new product -> lưu vào sys.center.notification
-1) Push: Mỗi notification của 1 shop trong sys.center.notification lấy ra lưu vào 1M user.notification
-Có thể add message vào MQ, 1 worker lấy MQ từ từ ra cho vào từng user.notification, VD 1 message xử lý 10000 user. Có thể check ai online thì ưu tiên push trước => master
-2) Pull: khi user login, thì mới pull từ sys.center.notification vào user.notification, pull định kỳ khi online => login sẽ delay 1 lát mới có notification
-3) Tối ưu 
-- Việc ưu tiên cho user đang online là chuyện rất bth. Thực tế phải phân tích kinh doanh xem user nào online nhiều, user nào là khách hàng ruột thường mua hàng, user đăng ký nhận khuyến mãi từ trước, thì mỗi khi có sp mới sẽ push notification cho họ trước.
-- Shop có 1M follower mà push notification thì bị nặng. Có thể tạo 1 biến flag, mặc định là push notification, shop nào > 100K follower thì switch qua pull notification.
-
-=> tách ra, k ghi chung vào pattern nữa
-
-
-
-
 Design pattern
-
 Nhóm nào? Khái niệm? Tên gọi?
 Cách dùng
-Ưu điểm khi mở rộng code. Nhược điểm khi sử dụng. SS
+Ưu điểm khi mở rộng code. Nhược điểm khi sử dụng.
 Ref tới
 Phân tích
 
 
 
 # SOLID
--> S: 1 class chỉ làm 1 nhiệm vụ => hiểu sai. Đúng phải là 1 class chỉ nên có 1 lý do để thay đổi. 
+-> S (Single responsibility): 1 class chỉ làm 1 nhiệm vụ => hiểu sai. Đúng phải là 1 class chỉ nên có 1 lý do để thay đổi. 
 1 class có thể làm nhiều việc nhưng chỉ có 1 trách nhiệm, nếu 1 class thay đổi tức trách nhiệm của nó bị đổi. Nếu 1 class có 2 lý do để thay đổi, ta phải tách 2 trách nhiệm đó ra thành 2 class riêng.
 
--> O: viết hàm sao cho sửa 1 tính năng k thuộc hàm đó thì sẽ kp sửa hàm đó. 
+-> O (Open/Closed principal): viết hàm sao cho sửa 1 tính năng k thuộc hàm đó thì sẽ kp sửa hàm đó. 
 K được fix hard code để tránh sửa nh nơi
 
--> L: Hình vuông là hcn thì thay thế được hcn ở mọi chỗ
--> I: phân tách giao diện
--> D: class high level k phụ thuộc vào class low level. Cả 2 nên phụ thuộc vào abstraction.  
+-> L (Liskov Substitution Principle): Hình vuông là hcn thì thay thế được hcn ở mọi chỗ
+-> I (Interface Segregation Principle): phân tách giao diện
+-> D (Dependency Inversion Principle): class high level k phụ thuộc vào class low level. Cả 2 nên phụ thuộc vào abstraction.  
 
 
 

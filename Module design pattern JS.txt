@@ -16,7 +16,7 @@ K được fix hard code để tránh sửa nh nơi
 
 -> L (Liskov Substitution Principle): Hình vuông là hcn thì thay thế được hcn ở mọi chỗ
 -> I (Interface Segregation Principle): phân tách giao diện
--> D (Dependency Inversion Principle): class high level k phụ thuộc vào class low level. Cả 2 nên phụ thuộc vào abstraction.  
+-> D (Dependency Inversion Principle): class high level k phụ thuộc vào class low level mà cần 1 interface trung gian.
 
 
 
@@ -40,9 +40,9 @@ Nếu truyền biến file vào trong __constructor sẽ giảm phụ thuộc t�
 VD: function A() {
   B(x);
 }
-Để kiểm thử A, chỉ cần kiểm thử tham số truyền vào B là đúng và B(x) chỉ được gọi 1 lần trong A. Ta k cần kiểm thử B trong A chạy đúng k vì unit test của B phải lo điều đó.
+Để kiểm thử A, chỉ cần check tham số truyền vào B là đúng và B(x) chỉ được gọi 1 lần trong A. Ta k cần kiểm thử B trong A chạy đúng k vì unit test của B phải lo điều đó.
 Nếu hàm A nhận tham số kiểu X thì unit test phải mock biến X để truyền vào A, bắt mọi case thành công và case fail.
-Nếu hàm A mà dùng kiểu this->x = new X() hay còn gọi là hard dependency thì unit test sẽ rất khó vì k thể mock biến x để truyền vào được nữa, buộc phải gọi hàm để khởi tạo.
+Nếu hàm A mà dùng kiểu this->x = new X() hay gọi là hard dependency thì unit test sẽ rất khó vì k thể mock biến x để truyền vào được nữa, buộc phải gọi hàm để khởi tạo.
 Môi trường unit test phải độc lập nhưng có những TH như v sẽ khiến cho các test case phụ thuộc vào nhau hoặc ảnh hưởng ra hệ thống ngoài. VD class X là FileManager, tester sẽ k thể chạy test mà k ảnh hưởng tới hệ thống tệp được.
 
 -> Cách code chuẩn:
@@ -63,13 +63,13 @@ class MP3File implements PlayerFile {
     return "Play MP3 file!";
   }
 }
-=> Sự phụ thuộc của 2 class đã giảm vì cả 2 cùng phụ thuộc vào 1 interface khó thay đổi. Có thể đổi tên class MP3File hay thêm kiểu File mới thoải mái mà MusicPlayer k sửa gì.
+=> Sự phụ thuộc của 2 class đã giảm vì cả 2 cùng phụ thuộc vào 1 interface khó thay đổi. Có thể đổi tên class MP3File hay thêm kiểu File mới mà MusicPlayer k sửa gì.
 
 
 
 
 # State pattern
-Thuộc nhóm behavior. Dùng khi 1 đối tượng thay đổi hành vi tùy theo trạng thái nội tại của nó. Do đó gọi là state pattern.
+Thuộc nhóm behavior. Dùng khi 1 đối tượng thay đổi hành vi tùy theo trạng thái nội tại của nó.
 
 - Mỗi state viết ở 1 class riêng và thêm từng hành vi tương ứng.
 - Viết class Context là đối tượng chứa biến state, rồi thực hiện các hành động tùy theo state.
@@ -426,7 +426,29 @@ class ProductB2 implements AbstractProductB {}
 
 
 
-# Composite pattern
-//!!!!!!!
+# Composite pattern => xàm
+Nhóm structural. Biểu diễn cấu trúc cây và xử lý cùng logic cho các node trên cây.
+Dễ thêm node mới mà k ảnh hưởng cây.
+
+Cơ chế: Gom node và leaf đều implement 1 interface, rồi duyệt recursive thực hiện logic.
+
+VD thư mục:
+├── File1
+├── File2
+└── FolderA
+    ├── File3
+    └── File4
+Nếu k dùng pattern: 
+if (obj is File) { }
+else if (obj is Folder) { }
+Nếu dùng thì tạo interface cho cả file và folder:
+interface IFileSystemItem { void Display(); s}
+item.Display();
+
+
+
+# Flyweight pattern
+
+
 
 

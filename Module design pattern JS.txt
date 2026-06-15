@@ -16,12 +16,12 @@ K được fix hard code để tránh sửa nh nơi
 
 -> L (Liskov Substitution Principle): Hình vuông là hcn thì thay thế được hcn ở mọi chỗ
 -> I (Interface Segregation Principle): phân tách giao diện
--> D (Dependency Inversion Principle): class high level k phụ thuộc vào class low level mà cần 1 interface trung gian.
+-> D (Dependency Inversion Principle)
 
 
 
 # Dependency Inversion
-Class high level k phụ thuộc vào class low level, interface k được phụ thuộc vào implementation
+Class high level k phụ thuộc vào class low level mà phụ thuộc vào 1 interface, interface k được phụ thuộc vào implementation
 
 -> Khi code sai:
 class MusicPlayer {
@@ -34,7 +34,7 @@ class MusicPlayer {
   }
 }
 Nếu truyền biến file vào trong __constructor sẽ giảm phụ thuộc tốt hơn nhưng vẫn chưa chuẩn DI
-=> Class MP3MusicFile đổi tên hay đổi nội dung thì MusicPlayer cũng phải đổi theo; Khó cho unit test; Nếu MusicPlayer mở rộng nhiều loại hơn sẽ toang
+Class MP3MusicFile đổi tên hay đổi nội dung thì MusicPlayer cũng phải đổi theo; Khó cho unit test; Nếu MusicPlayer mở rộng nhiều loại hơn sẽ toang
 
 --> Unit test: là kiểm thử từng đơn vị
 VD: function A() {
@@ -46,6 +46,9 @@ Nếu hàm A mà dùng kiểu this->x = new X() hay gọi là hard dependency th
 Môi trường unit test phải độc lập nhưng có những TH như v sẽ khiến cho các test case phụ thuộc vào nhau hoặc ảnh hưởng ra hệ thống ngoài. VD class X là FileManager, tester sẽ k thể chạy test mà k ảnh hưởng tới hệ thống tệp được.
 
 -> Cách code chuẩn:
+interface PlayerFile {
+  public function play();
+}
 class MusicPlayer {
   private $file;
   public function __construct(PlayerFile $file){
@@ -54,9 +57,6 @@ class MusicPlayer {
   public function play() {
     return $this->file->play();
   }
-}
-interface PlayerFile {
-  public function play();
 }
 class MP3File implements PlayerFile {
   public function play() {
@@ -100,8 +100,7 @@ Nếu chỉ có 2 cases quá ít hay xử lý ngắn thì việc chia ra lại l
 Thuộc nhóm behavior pattern. Dùng khi có nhiều user cùng subscribe vào 1 thứ, khi thứ đó thay đổi thì mọi user đều nhận được và perform các actions khác nhau. Các user là các Observer quan sát sự thay đổi.
 
 - Publisher add các observer vào 1 list trong nó. Khi phát sự kiện, nó gọi hàm xử lý của các observer là xong.
-
-(Strategy này bắt buộc phải dùng, k có nhược điểm gì cả)
+Strategy này bắt buộc phải dùng, k có nhược điểm gì cả
 
 Các cơ chế subscribe event hay publish 1 event mới đều có thể implement bên trong với cơ chế tương tự.
 Vd ta click 1 button thì in ra gì đó với addEventListener, thực tế nó chỉ cần thêm 1 hàm in vào cuối hàm click thôi
@@ -252,7 +251,7 @@ VideoFile result = facade.convertVideo("video.avi", "mp4");
 
 
 # Proxy Pattern
-Thuộc nhóm Structural. Dùng khi ta cần quản lý việc truy cập tới đối tượng thực. Vd ta thường check type hợp lệ hoặc đủ quyền mới gọi hàm xử lý thực. Hàm xử lý thực k chỉ tập trung xử lý chứ k làm các vc đó, mà class Proxy được ủy quyền mới làm việc điều hướng, tổng hợp lên object cuối cùng rồi gọi xử lý thực.
+Thuộc nhóm Structural. Dùng khi ta cần quản lý việc truy cập tới đối tượng thực. Vd ta thường check type hợp lệ hoặc đủ quyền mới gọi hàm xử lý thực. Hàm xử lý thực chỉ tập trung xử lý chứ k làm các vc đó, mà class Proxy được ủy quyền mới làm việc điều hướng, tổng hợp lên object cuối cùng rồi gọi xử lý thực.
 
 - Tạo class ProxyHandler chứa biến RealHandler. Nó check các thứ trước khi gọi hàm của RealHandler
 
@@ -281,7 +280,7 @@ Nếu giá cả k biến động => tính như bth, chỉ cần làm tròn lên 
 Nếu giá cả biến động nhiều:
 - Nếu user muốn nạp vào 1 lượng tiền bằng VNĐ -> chỉ cần convert đúng giá mà chuyển sang USD là được. Khi xử lý chính, sẽ tự chuyển sang USD đúng lượng tương ứng, VD tính là 1USD mà lúc xử lý nó giảm còn 0.99 USD thì cứ hiển thị 0.99 USD => nên cảnh báo người dùng
 - Nếu user muốn nạp vào 1 lượng VNĐ cho đủ 1USD:
-Trong web3 có thông số slippage tùy vào token biến động hay không mà khác nhau. VD slippage 0.5% thì cảnh báo người dùng có thể mất x + 0.5%x => trong SM sau khi swap sẽ trả lại token thừa. Có thể cho người dùng tùy chọn slippage vì kiểu gì cũng chả lại tiền thừa mà.
+Trong web3 có thông số slippage tùy vào token biến động hay không mà khác nhau. VD slippage 0.5% thì cảnh báo người dùng có thể mất x + 0.5%x => trong SM sau khi swap sẽ trả lại token thừa. Có thể cho người dùng tùy chọn slippage vì kiểu gì cũng trả lại tiền thừa mà.
 Trong web2 k chắc về slippage thì nên chủ động yêu cầu cộng 1 lượng margin of error tầm 1% để đảm bảo đạt target 
 
 
@@ -424,6 +423,8 @@ interface AbstractProductB {}
 class ProductB1 implements AbstractProductB {}
 class ProductB2 implements AbstractProductB {}
 
+4) Có thể tạo 1 factory tối ưu nếu có quá nhiều class và mỗi class có các unique attribute khác nhau. Ref tới "Flyweight pattern"
+
 
 
 # Composite pattern => xàm
@@ -448,7 +449,300 @@ item.Display();
 
 
 # Flyweight pattern
+Thuộc nhóm structural. Gom thuộc tính chung thành 1 biến tránh tốn bộ nhớ khi tạo nhiều instance.
+VD mọi ký tự đều lưu vào class Character sẽ tốn bộ nhớ vì style có thể trùng:
+class Character
+{
+  public char Symbol;
+  public string Font;
+  public int Size;
+  public string Color;
+}
+Sửa lại bằng cách:
+class Character
+{
+  public char Symbol;
+  public CharacterStyle Style;
+  public Character(char symbol, CharacterStyle style)
+  {
+    Symbol = symbol;
+    Style = style;
+  }
+}
+class CharacterStyle
+{
+  public string Font;
+  public int Size;
+  public string Color;
+}
+class CharacterStyleFactory => dùng luôn factory pattern
+{
+  private Dictionary<string, CharacterStyle> styles = new();
+  public CharacterStyle GetStyle(string font, int size, string color)
+  {
+    string key = $"{font}-{size}-{color}";
+    if (!styles.ContainsKey(key))
+    {
+      styles[key] = new CharacterStyle
+      {
+        Font = font,
+        Size = size,
+        Color = color
+      };
+    }
+    return styles[key];
+  }
+}
+Tái sử dụng biến style tối ưu bộ nhớ:
+var factory = new CharacterStyleFactory();
+var style = factory.GetStyle("Arial", 12, "Black");
+var chars = new List<Character>
+{
+  new Character('H', style),
+  new Character('e', style),
+  new Character('l', style),
+  new Character('l', style),
+  new Character('o', style)
+};
 
 
+
+# Visitor pattern
+Thuộc nhóm behavior. Có thể thêm 1 thao tác mới lên 1 object mà k cần sửa object đó.
+VD thêm vào class của object:
+interface IFile
+{
+  void Accept(IVisitor visitor);
+}
+class PdfFile : IFile
+{
+  public void Accept(IVisitor visitor)
+  {
+    visitor.Visit(this);
+  }
+}
+class WordFile : IFile
+{
+  public void Accept(IVisitor visitor)
+  {
+    visitor.Visit(this);
+  }
+}
+Muốn thêm function hiện các thông tin bên trong thì tạo class visitor:
+interface IVisitor
+{
+  void Visit(PdfFile pdf);
+  void Visit(WordFile word);
+}
+class InfoVisitor : IVisitor
+{
+  public void Visit(PdfFile pdf)
+  {
+    Console.WriteLine("Thông tin PDF");
+  }
+
+  public void Visit(WordFile word)
+  {
+    Console.WriteLine("Thông tin Word");
+  }
+}
+Muốn gọi hàm thì phải có visitor và object phải chấp thuận:
+var files = new List<IFile>
+{
+  new PdfFile(),
+  new WordFile()
+};
+var visitor = new InfoVisitor();
+foreach (var file in files)
+{
+  file.Accept(visitor);
+}
+Thêm class thuộc tính thoải mái:
+class VirusScanVisitor: IVisitor { }
+
+
+
+# Command pattern
+Thuộc nhóm behavior. Dùng để đóng gói yêu cầu thành 1 object.
+Mặc định code untrest DI service xong cũng dùng command pattern rồi.
+VD:
+public interface ICommand
+{
+  void Execute();
+}
+public class Light
+{
+  public void TurnOn()
+  {
+    Console.WriteLine("Light is ON");
+  }
+}
+public class TurnOnLightCommand : ICommand
+{
+  private readonly Light _light;
+  public TurnOnLightCommand(Light light)
+  {
+    _light = light;
+  }
+  public void Execute()
+  {
+    _light.TurnOn();
+  }
+}
+public class RemoteControl
+{
+  private ICommand _command;
+  public void SetCommand(ICommand command)
+  {
+      _command = command;
+  }
+  public void PressButton()
+  {
+      _command.Execute();
+  }
+}
+
+
+
+# Interpreter pattern
+Thuộc nhóm behavior. Chỉ dùng khi cần diễn giải biểu thức toán học.
+VD biểu thức 5 + 3, mỗi phần tử là 1 class:
+public interface IExpression
+{
+  int Interpret();
+}
+public class NumberExpression : IExpression
+{
+  private readonly int _number;
+  public NumberExpression(int number)
+  {
+    _number = number;
+  }
+  public int Interpret()
+  {
+    return _number;
+  }
+}
+public class AddExpression : IExpression
+{
+  private readonly IExpression _left;
+  private readonly IExpression _right;
+  public AddExpression(IExpression left, IExpression right)
+  {
+    _left = left;
+    _right = right;
+  }
+  public int Interpret()
+  {
+    return _left.Interpret() + _right.Interpret();
+  }
+}
+IExpression expr = new AddExpression(
+  new NumberExpression(5),
+  new NumberExpression(3)
+);
+Console.WriteLine(expr.Interpret()); // 8
+
+
+
+# Iterator pattern
+Thuộc nhóm behavior. Dùng để duyệt đối tượng mà k cần biết cấu trúc bên trong của nó.
+VD IEnumerable và IEnumerator là ứng dụng của pattern này.
+VD: 
+public interface IIterator<T>
+{
+  bool HasNext();
+  T Next();
+}
+public class NameIterator : IIterator<string>
+{
+  private readonly List<string> _names;
+  private int _index = 0;
+  public NameIterator(List<string> names)
+  {
+    _names = names;
+  }
+  public bool HasNext()
+  {
+    return _index < _names.Count;
+  }
+  public string Next()
+  {
+    return _names[_index++];
+  }
+}
+public class NameCollection
+{
+  private readonly List<string> _names = new();
+  public void Add(string name)
+  {
+    _names.Add(name);
+  }
+  public IIterator<string> CreateIterator()
+  {
+    return new NameIterator(_names);
+  }
+}
+Sử dụng:
+var names = new NameCollection();
+names.Add("An");
+names.Add("Bình");
+names.Add("Cường");
+var iterator = names.CreateIterator();
+while (iterator.HasNext())
+{
+  Console.WriteLine(iterator.Next());
+}
+
+
+
+# Memento pattern
+Thuộc nhóm behavior. Có thể undo trạng thái trước đó của object mà k lộ chi tiết bên trong object.
+VD class memento lưu snapshot trạng thái:
+public class Memento
+{
+  public string Content { get; }
+  public Memento(string content)
+  {
+    Content = content;
+  }
+}
+Object chứa trạng thái cần lưu:
+public class TextEditor
+{
+  public string Content { get; set; }
+  public Memento Save()
+  {
+    return new Memento(Content);
+  }
+  public void Restore(Memento memento)
+  {
+    Content = memento.Content;
+  }
+}
+Caretaker quản lý các snapshot memento:
+public class History
+{
+  private readonly Stack<Memento> _history = new();
+  public void Push(Memento memento)
+  {
+    _history.Push(memento);
+  }
+  public Memento Pop()
+  {
+    return _history.Pop();
+  }
+}
+Sử dụng:
+var editor = new TextEditor();
+var history = new History();
+editor.Content = "Xin chào";
+history.Push(editor.Save());
+editor.Content = "Xin chào các bạn";
+history.Push(editor.Save());
+editor.Content = "Xin chào các bạn hôm nay";
+Console.WriteLine(editor.Content); // Xin chào các bạn hôm nay
+editor.Restore(history.Pop());
+Console.WriteLine(editor.Content); // Xin chào các bạn
 
 

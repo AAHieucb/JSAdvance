@@ -2,6 +2,7 @@ ElasticSearch
 Trong ELK stack, Logstash là dịch vụ thu thập data được triển khai phía client ta k dùng ở backend, Kibana visualize data. Hiện dùng Filebeat thay cho Logstash vì nó nhẹ hơn và tốt hơn, VD Logstash thất bại có thể gây mất bản ghi
 
 
+
 # Basic
 -> Elastic search k thể thay thế db vì chỉ phục vụ search nhanh data dạng object, k có tính ACID. Còn database truyền thống có đủ tính ACID, có relational giữa các bảng.
 Elastic Search chỉ dùng khi cần full-text search, realtime analytics với unstructured data. SQL và mongodb dùng cho complex relational and structured data. 

@@ -1,40 +1,155 @@
-ElasticSearch
-Trong ELK stack, Logstash là dịch vụ thu thập data được triển khai phía client ta k dùng ở backend, Kibana visualize data. Hiện dùng Filebeat thay cho Logstash vì nó nhẹ hơn và tốt hơn, VD Logstash thất bại có thể gây mất bản ghi
+# ElasticSearch
+Trong ELK stack, Logstash là dịch vụ thu thập data chỉ được triển khai phía client, Kibana visualize data. Hiện dùng Filebeat thay cho Logstash vì nó nhẹ hơn và tốt hơn.
+Filebeat là 1 trình thu thập dữ liệu độc lập với ECK và có thể hỗ trợ ECK bằng cách thu thập data và gửi đến elastic search hay Logstash, Kibana để lưu.
+Elastic search k thể thay thế db vì k có tính ACID, chỉ search record nhanh, k có quan hệ complex relational giữa các bảng. SQL cũng k thay thế ES vì full text search của ES rất mạnh, còn SQL tốn thêm nhiều memory khi thêm index.
+Elastic Search chỉ dùng khi cần full-text search, realtime analytics với unstructured data. 
 
+ECK (Elastic Cloud on Kubernetes): Có công ty gọi là dùng ECK thì hiểu là dùng các sản phẩm của Elastic Stack (Elasticsearch, Kibana, Beats, Logstash) deploy trên K8s. 
+K8s quản lý các container chạy các tool đó, dùng sẽ dễ hơn nhiều so với deploy thủ công.
 
-
-# Basic
--> Elastic search k thể thay thế db vì chỉ phục vụ search nhanh data dạng object, k có tính ACID. Còn database truyền thống có đủ tính ACID, có relational giữa các bảng.
-Elastic Search chỉ dùng khi cần full-text search, realtime analytics với unstructured data. SQL và mongodb dùng cho complex relational and structured data. 
-K thể dùng SQL thay thế ES vì full text search của ES rất mạnh. Còn khi dùng SQL với lượng data cực lớn, index bắt đầu vô dụng, thậm chí còn tốn thêm bộ nhớ, tốc đọ chậm
-
--> Cài đặt: - Dùng cloud
+-> Cài đặt: 
+- Dùng cloud
 - Dùng docker cài ES và Kibana:
 docker network create elastictest => tạo 1 network vì ElasticSearch và Kibana tương tác với nhau trong cùng 1 mạng host cung ra ngoài
 docker pull docker.elastic.co/elasticsearch/elasticsearch:8.8.2 => vào dockerhub cho phiên bản mới nhất
 docker run --name es-test --net elastictest -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" -it docker.elastic.co/elasticsearch/elasticsearch:8.8.2
-Vào localhost:9200 để check elasticsearch đang chạy. 
-Kibana tương tự dashboard của rabbitmq. Khi cài elasticsearch nhận được 1 cái token paste vào kibana để tương tác bằng giao diện. 
+Vào localhost:9200 để check elasticsearch đang chạy.
+Mật khẩu lưu trong logs, để lấy có thể ghi ra file "docker logs <hash> > test.txt", search từ khoá password, username default là "elastic"
 
 docker pull docker.elastic.co/kibana/kibana:8.8.1 => cài kibana
 docker run --name kib-test --net elastictest -p 5601:5601 docker.elastic.co/kibana/kibana:8.8.1
-Mở với http://localhost:5601/?code=622883
-Vì host 0.0.0.0 k được config trong file yaml của kibana vì ta chạy thẳng cli, mặc định dùng localhost
+Mở với http://localhost:5601/?code=622883 Khi cài elasticsearch nhận được token paste vào kibana để tương tác bằng giao diện. 
 
--> Nếu tắt đi và bắt lại phải dùng:
-docker logs <hash> > test.txt => để xem log lấy password các thứ. Search từ khóa passowrd, còn username default là "elastic" => Nó cũng hướng dẫn cách đổi mật khẩu luôn
+
+
+# Đồng bộ db vào elastic search. 
+Usecase postgreSQL đang có data, nhưng để tối ưu tốc độ truy vấn, cần đồng bộ vào elastic search => Đơn giản chỉ cần chạy job query data từ DB insert vào elastic search. 
+Mọi query db sync vào ES đều phải dùng index.
+URL: https://mattermost.com/blog/making-a-postgres-query-1000-times-faster/
+
+
+
+# Viết query với _search
+_search dùng GET hay POST đều được
+
+VD chỉ lấy trường @timestamp:
+GET test/_search
+{
+  "query": {
+    "match_all": {}
+  },
+  "fields": [
+    "@timestamp"
+  ], 
+  "_source": false, // Or [<liệt kê các trường ra>]
+  "sort": [
+    {
+      "@timestamp": {
+        "order": "desc"
+      }
+    }
+  ]
+}
+
+VD search mặc định là OR với các từ juve OR help OR striker trong trường phrase:
+PUT players => tạo index cho players, tương tự như "PUT /players"
+Sau khi tạo index thì có thể tìm kiếm:
+POST players/_search
+{
+  "query": {
+    "match": {
+      "phrase": "juve help striker"
+    }
+  }
+}
+
+VD search với AND:
+POST players/_search
+{
+  "query": {
+    "match": {
+      "phrase": {
+        "query": "juve help striker",
+        "operator": "and"
+      }
+    }
+  }
+}
+
+VD search bằng OR khớp 2 từ, nếu khớp 3 từ thì hệt như AND:
+POST players/_search
+{
+  "query": {
+    "match": {
+      "phrase": {
+        "query": "juve help striker",
+        "minimum_should_match": 2
+      }
+    }
+  }
+}
+
+VD search theo 2 trường name và phrase or 2 từ wood và juve:
+POST players/_search
+{
+  "query": {
+    "multi_match": {
+      "query": "wood juve",
+      "fields": ["name", "phrase"]
+    }
+  }
+}
+
+VD tìm kiếm đủ 1 cụm từ và phải đúng thứ tự như các từ riêng biệt:
+POST players/_search
+{
+  "query": {
+    "match_phrase": {
+      "phrase": "help striker juve"
+    }
+  }
+}
+
+VD dùng slop linh hoạt:
+POST players/_search
+{
+  "query": {
+    "match_phrase": {
+      "phrase": "help juve",
+      "slop": 1 // chỉ định có max 1 từ nữa được xuất hiện giữa 2 từ help và juve giúp tăng độ linh hoạt của search
+    }
+  }
+}
+
+VD search chỉ cần có chứa đúng cụm từ:
+POST players/_search
+{
+  "query": {
+    "match_phrase_prefix": { // tìm kiếm bắt đầu bằng cụm từ nào
+      "phrase": "help juv",
+      "max_expansions": 2 // số lượng các từ khớp trong từ điển mà ta lấy, default nó là 50 phần tử
+    }
+  }
+}
+Giả sử trường phrase có các giá trị:
+help juventus
+help juvenile
+help juvencio
+help juvan
+help jump
+thì nó lấy 2 từ đầu tiên là help juventus và help juvenile, bỏ qua các từ còn lại vì max_expansions = 2
 
 
 
 # Thao tác trên kibana
--> Tab Devtool: Các lệnh thao tác rest api của elasticsearch đều tự động sinh ra với nhiều kiểu endpoint chức năng có sẵn, ta chỉ cần dùng luôn
+-> Tab Devtool:
 
 Add 1 record vào index test (id và version sinh tự động như mongodb):
 POST test/_doc
 {
   "username": "Hello"
 }
-=> Test là chỉ mục tự tạo nếu chưa có. Mọi tương tác đều phải xác định tác động tới 1 chỉ mục nào hay tác động toàn bộ.
+=> test là chỉ mục tự tạo nếu chưa có, mọi tương tác đều phải xác định tác động tới 1 chỉ mục nào hay tác động toàn bộ.
 
 Add multi vào index test:
 POST test/_bulk
@@ -70,7 +185,6 @@ Add kèm update:
 Lấy mọi index trong elasticsearch cluster:
 GET _cat/indices
 => Tương tự khi convert sang rest api: curl -XGET https://localhost:9200/_cat/indices
-(Remove-item alias:curl)
 
 Search lấy mọi record với trường timestamp giảm dần
 GET test/_search
@@ -118,9 +232,8 @@ PUT test/_mapping
 
 GET / => chính là localhost::9200
 
---> Tùy biến với Devtool: Lệnh <endpoint> {<body dạng json>}
-URL: https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
-
+--> URL: https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
+Lệnh <endpoint> {<body dạng json>}
 VD: HEAD test/_doc/100001 => check bản ghi tồn tại
 HEAD test => check có chỉ mục test hay không
 
@@ -147,156 +260,6 @@ _settings => endpoint chỉnh sửa config
 _create => Chưa có thì tạo, có r thì báo lỗi
 _mget => lấy multi record
 
--> Stack Management / Index Management: Xem mọi bản ghi của từng index
-
-
-
-# Query với _search
-_search dùng GET hay POST đều được
-
-VD Chỉ lấy trường @timestamp:
-GET test/_search
-{
-  "query": {
-    "match_all": {}
-  },
-  "fields": [
-    "@timestamp"
-  ], 
-  "_source": false, // Or [<liệt kê các trường ra>]
-  "sort": [
-    {
-      "@timestamp": {
-        "order": "desc"
-      }
-    }
-  ]
-}
-
-VD search mặc định là OR với các từ juve OR help OR striker trong trường phrase:
-PUT players
-POST players/_search
-{
-  "query": {
-    "match": {
-      "phrase": "juve help striker"
-    }
-  }
-}
-
-VD search với AND:
-POST players/_search
-{
-  "query": {
-    "match": {
-      "phrase": {
-        "query": "juve help striker",
-        "operator": "and"
-      }
-    }
-  }
-}
-
-VD search bằng OR khớp 2 từ, nếu khớp 3 từ thì hệt như AND:
-POST players/_search
-{
-  "query": {
-    "match": {
-      "phrase": {
-        "query": "juve help striker",
-        "minimum_should_match": 2
-      }
-    }
-  }
-}
-
-VD search theo 2 trường name và phrase or 2 từ wood và juve:
-POST players/_search
-{
-  "query": {
-    "multi_match": {
-      "query": "wood juve",
-      "fields": ["name", "phrase"]
-    }
-  }
-}
-
-VD tìm kiếm đủ 1 cụm từ:
-POST players/_search
-{
-  "query": {
-    "match_phrase": {
-      "phrase": "help striker juve"
-    }
-  }
-}
-=> Phải chứa đúng thứ tự như các từ riêng biệt. VD dùng "phrase": "help striker juv" thì phrase chứa "help striker juve" sẽ k khớp
-
-VD dùng slop linh hoạt:
-POST players/_search
-{
-  "query": {
-    "match_phrase": {
-      "phrase": "help juve",
-      "slop": 1
-    }
-  }
-}
-=> slop = 1 chỉ định có max 1 từ nữa được xuất hiện giữa 2 từ help và juve, tăng độ linh hoạt của search
-
-VD search chỉ cần có chứa đúng cụm từ:
-POST players/_search
-{
-  "query": {
-    "match_phrase_prefix": {
-      "phrase": "help juv",
-      "max_expansions": 2
-    }
-  }
-}
-=> max_expansions là max lấy 2 phần tử, default nó là 50 phần tử
-
-
-
-# Đồng bộ db vào elastic search
--> Usecase postgreSQL đang có data, nhưng để tối ưu tốc độ truy vấn, ta phải đồng bộ vào elastic search. Đơn giản chỉ cần chạy job query data từ DB insert vào elastic search. 
-
-VD có 1 trăm triệu rows cần đồng bộ sẽ buộc mọi query db đều phải dùng index. Nhưng query plan trong DB tối ưu như nào, nhiều lúc ta k kiểm soát được, nếu quá lâu thì cần check từng lệnh để fix. Thậm chí có lệnh ta đánh index rồi nhưng nó không dùng, MySQL chạy index nhưng sang PostgreSQL cùng query nhưng lại éo dùng, phải check mới biết được.
-Lệnh "EXPLAIN (ANALYZE, BUFFERS) <query>" sẽ giải thích chi tiết 1 query, nếu có query không dùng INDEX COND mà dùng FILTER tức duyệt hết thì phải sửa. Tham số BUFFER luôn dùng để cung thêm thông tin qtr về data. Khi thực hiện, DB tự động lưu buffer để tối ưu, thông số buffer shared hit báo ta lưu nhiều như nào.
-
-Chú ý khi dùng OR trong db với data quá lớn or đk phức tạp, PostgreSQL có thể thực hiện FULL TABLE SCAN và loại bỏ đi rows k thoả mãn, thay vì dùng index. Có thể fix bằng cách tách queries, đổi sang dùng UNION, gộp so sánh trong tuple.
-URL: https://mattermost.com/blog/making-a-postgres-query-1000-times-faster/
-
-
-
-# ECK (Elastic Cloud on Kubernetes)
-Có công ty gọi là dùng ECK thì hiểu là dùng elastic search deploy trên K8s.
-Elastic search lưu trữ dữ liệu hỗ trợ filter phức tạp với fulltext search và phân tích data. K8s là quản lý triển khai các container. K8s có nhiều worker node có các pods chạy container.
-ECK là 1 giải pháp giúp deploy và quản lý các sản phẩm của Elastic Stack (như Elasticsearch, Kibana, Beats, và Logstash) trên K8s.
-
-Tức là elastic search chạy trong 1 container nằm trong 1 pod của 1 worker. K8s giúp tự động chạy, quản lý, scale các container. Nhờ đó dùng elastic search dễ hơn nhiều so với tự triển khai thủ công. Từ Cloud trong ECK không có nghĩa là phải dùng cloud, nó chỉ là việc dùng với K8s thôi.
-
-Trong K8s, PersistentVolumeClaim (PVC) là một yêu cầu cụ thể về các thuộc tính như access mode và không gian lưu trữ từ một PersistentVolume (PV).
-PersistentVolume (PV) là một khối lưu trữ (volume) được cấp phát bởi quản trị viên hoặc từ StorageClass trong Kubernetes. PV tồn tại độc lập với vòng đời của Pod.
-Cách hoạt động của PV và PVC:
-- Quản trị viên tạo PersistentVolume (PV). PV có thể được cung cấp từ các nguồn lưu trữ như NFS, iSCSI, Cloud Storage (AWS EBS, GCE Persistent Disk).
-- Người dùng tạo PersistentVolumeClaim (PVC) yêu cầu một PV với các điều kiện cụ thể (ví dụ: 10GB, chế độ ReadWriteOnce).
-- Kubernetes tự động tìm PV phù hợp với yêu cầu của PVC và kết nối chúng.
-- PVC được gắn vào Pod để cung cấp lưu trữ bền vững.
-=> Tức điểm đặc biệt là ECK dùng PersistentVolumes để đảm bảo dữ liệu Elasticsearch k bị mất khi container hoặc pod bị xoá. 
-
-VD thuôc tính của PVC: 
-- Dung lượng lưu trữ 10Gi. 
-- Access mode
-ReadWriteOnce: Chỉ một Pod có thể gắn (mount) PV ở chế độ đọc/ghi.
-ReadOnlyMany: Nhiều Pod có thể gắn PV ở chế độ chỉ đọc.
-ReadWriteMany: Nhiều Pod có thể gắn PV ở chế độ đọc/ghi.
-- Storage Class chỉ định loại lưu trữ như SSD, HDD, hoặc Cloud Storage như AWS EBS
-
-
-
-# Filebeat
-Là 1 trình thu thập dữ liệu, nó độc lập với ECK và có thể hỗ trợ ECK bằng cách thu thập data và gửi đến elastic search hoặc các hệ thống lưu trữ khác như Logstash, Kibana để lưu.
-VD Devops team triển khai hệ thống microservice trên K8s với các thành phân như class, module, lesson rồi mount FileBeat vào. Triển khai cả ECK. Filebeat trong K8s deploy dưới dạng một DaemonSet sẽ thu thập logs từ tất cả các pod và container trong hệ thống. Còn nếu logs ghi vào file, FileBeat cũng thu thập được logs từ memory của các microservice để gửi đến Elastic search. ECK có nhiều nodes trong cluster sẽ xử lý.
+-> Tab Stack Management / Index Management: Xem mọi bản ghi của từng index
 
 

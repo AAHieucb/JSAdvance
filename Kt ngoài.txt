@@ -75,3 +75,29 @@ Trong duonglingo có Zombie mode là chế độ hệ thống tự động sử 
 - Phía BE tạo 1 endpoint gom API, or nhận mảng data và trả về list kết quả
 
 
+
+# Headscale và tailscale
+Tailscale là hệ thống mesh VPN là các thiết bị kết nối trực tiếp với nhau, hay tailnet.
+Dùng khi có nhiều thiết bị ở xa mà muốn connect với nhau như mạng LAN bảo mật mà k cần VPN phức tạp. VD ở công ty truy cập vào laptop ở nhà, ở nhà truy cập vào private cloud của công ty.
+            Tailscale Control Plane
+                    |
+  ----------------------------------
+  |                |               |
+
+Laptop           Server          Phone
+
+WireGuard        WireGuard       WireGuard
+tunnel           tunnel          tunnel
+
+Tailscale control plane chỉ chứa thông tin giúp các máy tìm đến nhau chứ request k đi qua.
+WireGuard tunnel chỉ có tác dụng encrypt đường truyền giữa các máy
+Tailscale Control Server là tailscale do Tailscale Inc vận hành có thể mua dùng.
+DERP relay dùng khi 2 máy không kết nối trực tiếp được thì sẽ relay (chuyển tiếp) traffic.
+Laptop
+   |
+DERP server
+   |
+Server
+Headscale y hệt tailscale nhưng open source và tự host được. Nếu cần enterprise privacy và no limit thì dùng. URL: https://www.opensourceprojects.dev/post/headscale
+
+

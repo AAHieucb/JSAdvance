@@ -1,308 +1,96 @@
-# Basic
-RabbitMQ chịu được tầm 10k request/1s, thông lượng yếu hơn so với Kafka. Còn độ trễ hay độ tin cậy thì RabbitMQ tốt hơn, khó miss message hơn. 
+# RabbitMQ
+RabbitMQ chịu được 10k request/1s, thông lượng yếu hơn Kafka, nhưng độ trễ và độ tin cậy thì RabbitMQ tốt hơn, khó miss message hơn. Còn có RocketMQ, ActiveMQ
 RabbitMQ < Kafka < Pulsar: Quy mô vừa thì RabbitMQ. Kafka chơi mọi nhu cầu phức tạp, k dùng cho dự án nhỏ. Còn Pulsar hỗ trợ tính năng mới như multi-tenancy và geo-replication
 
 -> Cài đặt: 
 - Cloud: https://customer.cloudamqp.com/ 
-Datacenter chọn ở Singapore. Tạo sẽ vào được trang dashboard quản lý (ấn RabbitMQ Management). Nhiềuó cung port, uri cần để connect.
+Datacenter chọn ở Singapore. Tạo sẽ vào được trang dashboard quản lý (RabbitMQ Management). Nó cung port và uri để connect.
 - Cài với docker: https://www.rabbitmq.com/download.html
 docker pull rabbitmq:3.12-management -> docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3.12-management
-=> Cổng 5672 để connect, cổng 15672 để quản lý dashboard. Vào localhost:15672 và nhập tk mk đều là "guest" để truy cập dashboard.
+Cổng 5672 để connect, cổng 15672 để quản lý dashboard. Vào localhost:15672 và nhập tk mk đều là "guest" để truy cập dashboard.
 
 -> Usecase: User <--100ms--> System -- MessageQueue --200ms-- Service 1 gửi mail
                                                     --400ms-- Service 2 tích điểm
                                                     --100ms-- Service 3 cộng rank
 Nhược điểm là MQ làm hệ thống thiếu tính nhất quán. User thấy request đã xử lý thành công nhưng các task trong queue có thề fail or chua xong.
 
-Usecase: Ta có 1 server connect MySQL chịu tải max 2k request 1s, bth nhận 50 request 1s nên chạy vẫn ok. Nhưng sau khi phát mã giảm giá, số lượng request vào thời điểm đó tăng lên 5k request 1s làm sập db server (giả sử k dùng cache ở TH này). Khi đó có thể dùng MQ, config hàng đợi cho output max 2k request 1s, thì dù đầu vào nhiều đến đâu thì hàng đợi cũng chỉ cung ra 2k request 1s. Các request khác sẽ nằm trong hàng đợi chờ được lấy ra, tăng tính bền vững tránh sập hệ thống, đảm bảo người đến sau phải thực hiện sau.
-
-Usecase batch request: gặp 1 task gửi mail nặng, ta cho vào 1 queue riêng, khi có đủ 200 request mới lấy ra xử lý trong 1 lần thay vì gửi lần lượt 200 mails.
-
--> MQ cũng hỗ trợ gom nhiều message thực hiện trong 1 transaction và rollback nếu fail.
+Usecase: có 1 server connect MySQL chịu tải max 2k request 1s, bth nhận 50 request 1s nên chạy vẫn ok, nhưng sau khi phát mã giảm giá, số lượng request vào thời điểm đó tăng lên 5k request 1s làm sập db server. Có thể config MQ chỉ cung ra 2k request 1s, các request còn lại chờ trong hàng đợi, nếu quá tải thì cấu hình dropoldest được.
 
 
 
 # Messaging pattern trong RabbitMQ
-1) Message Queue: Producer gửi message vào 1 queue cụ thể và consumer nhận xử lý message đó bất đồng bộ. Mỗi message chỉ được xử lý bởi 1 consumer và đảm bảo tính có thứ tự.
+Producer gửi message vào Exchange. Exchange quyết định queue nào nhận message. Có thể dùng wildcard or routing key. VD: payment.*
+
+1) Message Queue: producer gửi message vào 1 queue cụ thể và consumer nhận xử lý message. Mỗi message chỉ được xử lý bởi 1 consumer và đảm bảo thứ tự.
 Producers ---> Message Queues ---> Consumers
-=> Thường dùng cho kiểu workload distribution hay load balancing vì chỉ 1 consumer nhận. VD cấu hình message 1 là consumer 1 xử lý thì message 2 sẽ gửi cho 1 consumer khác. Mặc định dùng roundrobin
+=> Thường dùng cho kiểu workload distribution hay load balancing vì chỉ 1 consumer nhận. VD cấu hình roundrobin.
 
 2) Publish/Subscribe => Khi message gửi tới nhiều consumer chứ k chỉ 1
+Mỗi ứng dụng có 1 luồng khác nhau.
+- Redis pub/sub:
+Publisher -> Channel "xxx" -> Subscribers
+
+- RabbitMQ: 
 Producers --> RabbitMQ (MessageBroker)[Exchange1 ---> Queue11] ---> [Consumer1, Consumer2]
                                       [          \__> Queue12] __/^
                                       [Exchange2 ---> Queue21] ---> [Consumer3, Consumer4]
                                       [          \__> Queue22] __/^
+Thực tế producer và consumer connect với MQ thông qua 1 channel connection, có thể config số lượng connection: Producer --- Channel --- MessageBroker --- Channel --- Consumer
+Producers publish gói tin vào 1 exchange, exchange sẽ boardcast message tới queue gắn với nó theo routing rules, consumers subscribe vào queue để nhận message.
 
-Thực tế producer và consumer connect với MQ thông qua 1 channel connection, ta có thể config số lượng connection
-Producer --- Channel --- MessageBroker --- Channel --- Consumer
+- Apache Kafka:
+Producers -> Topic -> Consumers
 
-Producers publish gói tin vào 1 exchange nào đó chứ k gửi trực tiếp vào queue. Exchange sẽ boardcast message tới queue gắn với nó theo routing rules. Consumers subscribe vào exchange để nhận message từ queue nó cần.
-Pb:
-Dùng queue: tạo 1 queue name X -> producer gửi tin vào queue X -> consumer gắn vào queue X sẽ nhận được tin (thông qua channel)
-Dùng pubsub: tạo 1 exchange name X -> producer cho exchange publish message -> có queues bind vào exchange X -> exchange publish message thì queue nhận được tin -> consumer tương ứng gắn với queue cũng nhận được tin
-
--> Các kiểu exchange trong mô hình PubSub
+-> 4 kiểu exchange trong mô hình PubSub của RabbitMQ chỉ khác nhau ở routing method:
 Producer --- Exchange ___ Queue1 
                       \__ Queue2 
-Exchange phân bố message vào queue đang lắng nghe đúng sự kiện or loại bỏ message nếu k cần thiết.
-
-Có 4 loại exchange, chỉ khác ở routing method để exchange gửi vào queue nào:
 - Direct exchange: Exchange gửi cho queue liên kết với exchange đó mà routing key của queue khớp với routing queue của message.
 - Topic exchange: Tương tự nhưng routing key kiểu wildcard khớp routing pattern của queue. Pattern dùng # và *
 - Headers exchange: Exchange so khớp thuộc tính trong trường header của tin nhắn với header trong pattern của queue.
 - Fanout exchange: loại đơn giản nhất vì routing message tới mọi queue liên kết với nó mà k qt routing key gì cả.
 
+-> Xử lý message errors
+Khi tin nhắn quá TTL, bị consumer từ chối, hàng đợi bị đầy, k có queue nào khớp với routing rules. 
+Dead letter exchange (DLX) là 1 exchange đặc biệt dành cho các message k thể xử lý được.
+Cấu hình để khi queue chính có message lỗi hoặc khi server thực thi lỗi thì gửi tới exchange này. Tuỳ ý báo lỗi hoặc retry.
 
 
-# durable, persistent, noAck, expiration, prefetch
+
+# Các option durable, persistent, noAck, expiration, prefetch
 durable false / true thì khi server MQ crash or lỡ tay restart server thì dữ liệu mất vĩnh viễn hay vẫn bảo toàn, phải dùng kèm persistent. Cả client và server đều phải set durable cùng giá trị
 persistent true kết hợp với durable để đảm bảo dữ liệu k bị mất. Nó đảm bảo lưu message vào cache và ổ đĩa để server MQ crash vẫn k mất
 
 noAck: true thì consumer k cần gửi lại ack khi thực hiện xong, nguy cơ loss tin nhắn nếu consumer bị crash. false thì phải gửi lại ack thì queue mới xóa message, nếu consumer crash thì queue sẽ truyền tiếp cho consumer khác xử lý và tiếp tục chờ ack. 
 Khi noAck là false kiểu gì cũng có case message kbh bị xóa nên còn có cơ chế ttl cho message tự xóa tránh phí bộ nhớ hoặc lưu lại để xử lý riêng về sau nếu là message quan trọng
 
-Dùng channel.prefetch(1); để đảm bảo channel chỉ nhận 1 tin nhắn ở 1 thời điểm. Cài đặt này giải quyết vấn đề khi consumer X đang xử lý message 1 thì queue lại gửi tiếp message 2 thì X sẽ bị quá tải. prefetch xđ số message 1 worker xử lý đồng thời.
-Khi có dùng ack, queue chờ nhận 1 ack thì -1 prefetch. Khi dùng noack, thời điểm worker nhận message thành công là -1 prefetch luôn. Khi có nhiều worker cùng bắt 1 queue, sẽ tự dùng round robin gửi cho worker, nhưng nếu 1 worker đạt max prefetch sẽ bỏ qua và nhảy sang check tiếp worker sau => prefetch + noack hơi vô dụng
+channel.prefetch(1); giới hạn lượng unpacked message mà 1 consumer được pháp giữ cùng lúc, giải quyết vấn đề khi consumer X đang xử lý message 1 thì queue lại gửi tiếp message 2 thì X sẽ bị quá tải.
+Khi có dùng ack, queue chờ nhận 1 ack thì -1 prefetch. Khi dùng noack, thời điểm worker nhận message thành công là -1 prefetch luôn. Khi có nhiều worker cùng bắt 1 queue, sẽ tự dùng round robin gửi cho từng worker dựa vào prefetch đầy hay chưa.
 
--> Quy tắc: 
+Quy tắc: 
 - Queue ưu tiên cho consumer xử lý message là unacked trước ready 
+ready là số message sẵn sàng gửi tới consumer, unacked là số message đang được 1 consumer xử lý nhưng chưa nhận được ack hay vẫn chưa bị xóa khỏi queue.
 - Mỗi message chỉ được xử lý bởi 1 consumer ở 1 thời điểm
-
 VD: 1 consumer bắt message từ queue có 1 unacked, 1 ready thì nó nhận về unacked trước (unacked đó đang k được xử lý bởi consumer nào khác)
-VD: 1 queue có 1 ready và 1 unacked đang được xử lý bởi 1 consumer. Consumer khác vào thì sẽ nhận message là ready vì message unacked đang được xử lý bởi 1 consumer r.
-VD: tạo mỗi service 1 queue riêng và nhiều consumer cùng bắt xử lý message từ 1 queue, RabbitMQ tự phân bổ message theo round-robin và prefetch.
-Service1 --- Nhiều consumer1 --- Queue1 --- | Producers | --- Server --- Users
-Service2 --- Nhiều consumer2 --- Queue2 --- | 
-
--> Từ trang MQ manager, ta có thể xem, xóa queue or thêm queue với tên thoải mái
-Khi gửi message vào queue, message sẽ nằm trong queue và các consumer có thể subscribe để bắt message. Xem trên manager sẽ thấy total là tổng số messsage trong queue, ready là số message sẵn sàng gửi tới consumer, unacked là số message đang được 1 consumer xử lý nhưng chưa nhận được ack hay vẫn chưa bị xóa khỏi queue.
-
-
-
-# Xử lý message errors
-VD: khi tin nhắn quá thời gian sống mà ta set, bị consumer từ chối, hàng đợi bị đầy, k có queue nào khớp với routing rules. 
-
-Dead letter exchange (DLX) là 1 exchange đặc biệt dành cho các message k thể xử lý được.
-Ta cấu hình để khi queue chính có message lỗi hoặc khi server thực thi lỗi thì gửi tới exchange này. Message lỗi nằm trong 1 hàng đợi riêng và ta tuỳ ý xử lý như báo lỗi hoặc thử lại. VD cho consumers bắt và thử lại, ta có thể cấu hình service để nếu thử lại 2,3 lần mà vẫn fail thì log lỗi cho dev debug.
+1 queue có 1 ready và 1 unacked đang được xử lý bởi 1 consumer. Consumer khác vào thì sẽ nhận message là ready vì message unacked đang được xử lý bởi 1 consumer r.
 
 
 
 # Other
--> Mỗi loại có thế mạnh riêng: RocketMQ, RabbitMQ, Kafka, ActiveMQ
-
 -> So sánh RabbitMQ và tự implement MQ trong DB 
-- RabbitMQ cho phép đọc đồng thời và pop khỏi queue nhiều tin nhắn, dùng multiple consumers cấu hình được hết, còn db phải chờ lần lượt vì tính chất của transaction
-- RabbitMQ hỗ trợ routing, pub/sub trên nhiều loại hàng đợi, nhiều tính năng mở rộng, có cơ chế bảo mật tích hợp như TLS để mã hóa. Db k có mà phải tự implement đống đó, thay vì pubsub thì phải check db định kỳ, cơ chế ack cũng phải tự implement thủ công trong server.
-- RabbitMQ có các công cụ thống kê, giám sát đi kèm với giao diện web. DB chỉ dùng SQL thao tác thôi
+- RabbitMQ cho phép đọc đồng thời và pop khỏi queue nhiều tin nhắn, dùng multiple consumers. DB cũng làm được.
+- RabbitMQ hỗ trợ routing, pub/sub phức tạp, nhiều tính năng mở rộng, cơ chế bảo mật. Db k có mà phải tự implement đống đó, thay vì pubsub thì phải check db định kỳ, cơ chế ack cũng phải tự implement thủ công trong server.
+- RabbitMQ còn có các công cụ thống kê, giám sát đi kèm với giao diện web.
 
+-> Dead Letter Queue (DLQ) là queue đặc biệt chứa message bị lỗi không xử lý được như consumer reject, retry quá số lần cho phép, timeout, queue đầy.
+Mục đích là để lưu lại, có thể debug lỗi sau.
+VD trong rabbit MQ dùng dead letter exchange có dead letter queue bind vào exchange đó. Tương tự có dead letter topic.
 
+-> Lock Renewal là cơ chế gia hạn lock: Khi consumer lấy message, hệ thống “lock” message đó để consumer khác không xử lý trùng.
+Nếu xử lý lâu thì lock có thể hết hạn, message bị consumer khác lấy lại
+VD message cần xử lý 5 phút, nhưng lock chỉ 30 giây. Consumer phải call renew lock liên tục để giữ quyền xử lý message đó. 
 
+-> Message Scheduling là gì gửi message nhưng chưa xử lý ngay mà hệ thống sẽ delay đến thời điểm định trước. Ví dụ producer schedule gửi email sau 1 giờ thì queue chỉ deliver vào lúc đó.
+Queue binding là chỉ cách connect giữa queue và exchange để exchange biết phân bố message vào queue nào.
+Còn topic subscription là cơ chế consumer đăng ký nhận topic pattern như nào.
 
 
-
-
-
-
-Queue binding Topic subscription Dead letter queue Lock renewal Message scheduling Giải thích từng cái
-Các khái niệm này thường xuất hiện trong hệ thống message queue/pub-sub như RabbitMQ, Apache Kafka, Azure Service Bus, Amazon SQS.
-Mình giải thích theo kiểu dễ hình dung:
-
-1. Queue Binding
-Là gì?
-
-Binding = “nối” queue với exchange/topic để message đi đúng nơi.
-
-Ví dụ:
-
-Producer gửi message vào Exchange
-Exchange quyết định queue nào nhận message
-Binding chính là luật kết nối đó
-Ví dụ RabbitMQ
-Producer
-   ↓
-Exchange
-   ↓
-Binding rule
-   ↓
-Queue
-
-Binding có thể dựa trên:
-
-routing key
-pattern
-wildcard
-
-Ví dụ:
-
-Queue A bind với routing key = order.created
-
-=> Chỉ nhận message có key order.created
-
-Dễ hiểu hơn
-
-Giống:
-
-Exchange = bưu điện
-Queue = hộp thư
-Binding = quy tắc phát thư
-2. Topic Subscription
-Là gì?
-
-Subscription = đăng ký nhận message theo topic.
-
-Consumer nói:
-
-"Tôi muốn nhận mọi message về payment"
-Ví dụ
-
-Topics:
-
-payment.created
-payment.failed
-order.created
-
-Consumer subscribe:
-
-payment.*
-
-=> nhận:
-
-payment.created
-payment.failed
-Khác Queue Binding thế nào?
-Queue binding = cách queue được nối
-Topic subscription = consumer đăng ký nhận topic
-
-Nhiều hệ thống dùng 2 khái niệm gần giống nhau.
-
-3. Dead Letter Queue (DLQ)
-Là gì?
-
-Queue đặc biệt chứa message bị lỗi không xử lý được.
-
-Khi nào message vào DLQ?
-
-Ví dụ:
-
-Consumer crash nhiều lần
-Retry quá số lần cho phép
-Message invalid
-Timeout
-Flow
-Main Queue
-   ↓
-Consumer fail
-   ↓ retry fail
-Dead Letter Queue
-Tại sao cần?
-
-Để:
-
-không mất message
-debug lỗi
-xử lý lại sau
-Ví dụ thực tế
-
-Message:
-
-{
-  "userId": null
-}
-
-API xử lý luôn lỗi.
-
-Sau 5 lần retry:
-
-=> chuyển vào DLQ
-
-Developer kiểm tra DLQ để fix.
-
-4. Lock Renewal
-Là gì?
-
-Khi consumer lấy message, hệ thống “lock” message đó để consumer khác không xử lý trùng.
-
-Nếu xử lý lâu:
-
-lock có thể hết hạn
-message bị consumer khác lấy lại
-
-Lock renewal = gia hạn lock.
-
-Ví dụ
-
-Message cần xử lý 5 phút.
-
-Nhưng lock chỉ 30 giây.
-
-Consumer phải:
-
-renew lock
-renew lock
-renew lock
-
-để giữ quyền xử lý.
-
-Nếu không renew?
-
-Có thể:
-
-message bị xử lý 2 lần
-duplicate data
-Hay gặp ở
-Azure Service Bus
-SQS visibility timeout extension
-5. Message Scheduling
-Là gì?
-
-Gửi message nhưng chưa xử lý ngay.
-
-Hệ thống sẽ delay đến thời điểm định trước.
-
-Ví dụ
-Gửi email sau 1 giờ
-
-Producer:
-
-schedule message at 10:00
-
-Queue chỉ deliver lúc 10:00.
-
-Use cases
-Retry delayed
-Fail → retry sau 5 phút
-Reminder
-Nhắc lịch ngày mai
-Delayed job
-Xử lý đơn hàng sau 30 phút
-Tổng kết nhanh
-Khái niệm	Ý nghĩa
-Queue Binding	Nối queue với exchange/topic
-Topic Subscription	Đăng ký nhận topic
-Dead Letter Queue	Queue chứa message lỗi
-Lock Renewal	Gia hạn quyền xử lý message
-Message Scheduling	Hẹn giờ gửi/xử lý message
-Ví dụ flow thực tế
-Order Service
-   ↓
-Topic: order.created
-   ↓
-Queue Binding
-   ↓
-Email Queue
-   ↓
-Consumer xử lý email
-
-Nếu lỗi:
-   ↓
-Retry
-   ↓
-DLQ
-
-Nếu xử lý lâu:
-   ↓
-Lock renewal
-
-Nếu muốn gửi email sau:
-   ↓
-Message scheduling

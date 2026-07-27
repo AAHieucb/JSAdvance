@@ -1,0 +1,102 @@
+# Scale hệ thống basic
+Client -> VPS[Load Balancer Nginx -> PM2[NodeJS Express Server] -> Database(SQL Server) / Cache]
+Client Browser -> Nginx reverse proxy -> Apache <--HTML--> [PHP <-> Database Server] 
+                      |
+                  Static content
+LAMP (Linux Apache MySql PHP): môi trường linux, apache là 1 reverse proxy server để xử lý các yêu cầu từ client forward request tới PHP server, mysql db, PHP xử lý để kết nối MySQL để xử lý data rồi trả lại cho Apache dạng html
+
+Hosting VPS mua từ Google Cloud Plarform, AVA VPS. Nhận tài khoản mật khẩu và tạo liên kết SSH để code trên VPS từ xa.
+Hosting online như firebase hosting nosql, hosting FE bằng cách tải file lên.
+Hosting bằng server vật lý riêng or dùng laptop cá nhân cấu hình router wifi. Khi đó phải cấu hình nginx apache.
+
+Virtual Host là cách dùng nhiều địa chỉ domain trên 1 IP Server duy nhất, giúp 1 server lớn có thể serve nhiều web có domain khác nhau trên cùng 1 port, chỉ cần cấu hình port header ở nginx routing vào server tương ứng.
+Cách khác là cho mỗi web 1 port khác nhau cũng được.
+
+-> Vertical scaling: tăng RAM, ổ cứng, CPU. 
+Horizontal scaling: thêm các server tương đương và phân bố bằng Load Balancer
+
+-> Horizontal scaling database:
+- Đọc nhiều ghi ít => kiến trúc master/slave replica
+Webserver <--đọc-- slave1
+          --viết--> master
+          <--đọc-- slave2
+- Đọc nhiều ghi nhiều (comment, chat) -> Sharding Database
+Chia theo vùng, người VN truy cập db VN, người Mỹ truy cập db ở Mỹ. Chia theo thời gian. Sẽ tốn thêm bước xác định data thuộc db nào.
+Trong SQL cũng có partition tương tự cho phạm vi nhỏ hơn.
+
+
+
+# Scale dần hệ thống cực lớn
+-> Website[Frontend - Backend - Database] SSR chung 1 http server duy nhất, cả db cũng chung với máy chủ web
+
+-> Mô hình AJAX ra đời tách riêng: Database <-> Server <-> Client
+Cần dùng Rate Limit giới hạn request 1 user tới server để tránh DDoS 1 ip gửi quá nhiều request
+
+-> Để các file tĩnh trong cùng database sẽ die vì file tĩnh kích thước lớn và được request nhiều bởi nhiều người dùng, để riêng 1 con server khác cũng có thể chết con server đó. Nên dùng các dịch vụ lưu trữ đám mây gọi là BLOB storage như Azure Blob storage, AMS S3, và có thể dùng 1 dịch vụ CDN như Cloudflare, Google Cloud CDN để giảm tải.
+
+-> Dù tách được file tĩnh nhưng server API vẫn quá tải nếu nhiều người dùng. Có thể nâng cấp theo chiều dọc như tăng RAM CPU DISK nhưng kp giải pháp vĩnh viễn. Có thể nâng cấp ngang bằng cách thêm các máy chủ khác nhau. Khi đó, cần thêm Load Balancer ở mức DNS, nhưng hệ thống chưa quá to thì k cần đến mức đấy mà chỉ cần 1 Reverse Proxy
+
+Mô hình trở thành:
+client -> call APIs -> Reverse Proxy -> API Server 1 (cluster) -> Database
+  ^                                  \> API Server 2 (cluster) /^
+  |
+Cloudflare <- Static content BLOB Storage
+
+--> Cơ chế của Forward Proxy và Reserve Proxy:
+Forward Proxy để kết nối máy vào mạng như wifi công ty: user -> proxy -> internet. Trung gian giữa người dùng và internet, có tác dụng ẩn danh người dùng, kiểm soát truy cập, cache dữ liệu.
+Reverse Proxy là cái để mọi người bên ngoài vào máy chủ: customer -> internet -> Reverse Proxy <-> server. Reserve Proxy là trung gian giữa người dùng và máy chủ cuối, giúp cache data, load balancing.
+Apache server / nginx có thể làm load balancer. F5 là 1 phần cứng chuyên dụng cho load balancer, được phát triển bởi công ty F5 Networks.
+
+-> Nút cổ chai là database vì vẫn có nhiều request vào dữ liệu ít thay đổi mà lại hay được truy vấn, thêm cache:
+- Với In-Memory Cache ngay trên RAM của các API Server. Nhưng nhiều cache có thể gây hết RAM và cần các giải pháp xóa cache lâu không dùng với LRU (Least Recent Use) hoặc FIFO, LFU (Least Frequently Use)
+Vấn đề là: cache trên từng server nên nếu ban đầu client gọi vào server A được cache nhưng về sau Reverse Proxy gọi vào server B k được cache. Thuật toán routing nên dùng Hash thay vì các cách khác như Round Robin, đồng nghĩa 1 IP luôn request vào 1 server nhưng nếu server đó chết thì Reverse Proxy vẫn chỉ cho request đó tới server cũ. Họ fix bằng thuật toán Consistent Hashing or Rendezvous đảm bảo mỗi client trỏ đến đúng server và k bị ảnh hưởng khi thêm xóa 1 server.
+- Với Distribution Cache lưu ở server riêng chứ không lưu cùng server API. Khi đó sẽ tốn thêm tài nguyên nhưng có cache tập trung. Restart máy cũng k mất cache như in mem cache.
+
+Có thể kết hợp tạo cache nhiều tầng, memory MISS thì tìm distribution cache, distribution MISS thì lấy trong database
+Client --Call APIs--> Reverse Proxy     -> API Servers 1(In-mem cache) -> Redis Cluster, Database
+  ^              (Rendezvous Hashing)   \> API Servers 2(In-mem cache) /^
+  |
+Cloudflare <- Static content BLOB Storage
+
+-> Cache k thể xử lý hết 1 lượng database quá lớn hàng triệu người. Nếu db xem nhiều mà ghi ít thì ta có thể chia mô hình master-slave:
+          Web server
+          /^  ^|  ^\
+         /    |v    \
+    slave1 <-master-> slave2
+Đọc và ghi với master, chỉ đọc với các slave và 3 cái database luôn đồng bộ với nhau là replica.
+VD db sản phẩm bán hàng thì 1 product có thể ghi vài lần nhưng có thể có tới 1 triệu người đọc nó đồng thời, do đó các database slave thường có RAM rất mạnh, master thì RAM yếu hơn nhưng CPU có thể mạnh để xử lý request update.
+
+-> Nếu dữ liệu mà lớn thì truy vấn của người dùng vẫn lâu, phải dùng shard để giảm tải dữ liệu.
+Chia theo chữ cái đầu của username sẽ gặp vấn đề celebrity problem, cái nhiều cái ít. Chia theo vùng miền, chia theo thời gian hay hơn.
+
+-> Với các task phụ như logging hay gửi mail thì cho vào message queue để xử lý bất đồng bộ.
+
+-> Để tăng khả năng xử lý, thường dùng nhiều instance của server và dùng load balancing chia tải, nếu 1 server die thì load balancing tự động ref tới 1 server khác. 
+Có cách khác ít dùng hơn là thêm nhiều con server khác dự phòng và ở 1 thời điểm, chỉ có 1 con được chọn làm leader chạy. Nếu leader die thì dùng thuật toán Leader Election bầu con khác lên thay thế, đồng thời gửi mail về báo fix con bị hỏng.
+
+Ở cấp độ cao có thể dùng các thuật toán như Paxos hay Raft. Ở cấp độ cao hơn có thể dùng các phần mềm hỗ trợ các thuật toán như zookeeper và etcd giúp implement dễ hơn (Zookeeper dùng trong Kafka, Etcd dùng trong K8s)
+VD etcd như 1 db lưu cặp key-value chứa IP của leader. Nếu leader chết sẽ chạy thuật toán bầu và lưu leader mới.
+
+-> Tăng tốc query search, với case đơn giản có thể dùng FULL TEXT SEARCH index or dùng hẳn 1 loại database chuyên để search. 
+VD dùng thêm ElasticSearch chỉ khi search:
+Users -- LoadBalancer -- Server1 --Read-- Cache --Not exist in cache-- Slave
+                      -- Server2 --Write-- Master
+                                 --Search-- ElasticSearch      
+Cả DB Slave và ElasticSearch đều phải đồng bộ với db master mỗi khi write
+
+-> Khi hệ thông bị treo hay nghẽn mạng, cần có 1 cơ chế thông báo. Có 3 loại:
+- Logging: Log các vấn đề trong hệ thống.
+Ghi vào file xoay vòng khi file đầy nhưng khó tìm lỗi. 
+Ghi vào ELK Stack: Log --> logstash xử lý data -> elasticsearch lưu và phân tích data tìm kiếm nhanh ---> kibana visualize data
+Có thể log thống kê hành vi người dùng với Google Analytics.
+
+- Monitor: khác với log là lưu action của user, monitor lưu trạng thái của server để phân tích, dự đoán các vấn đề.
+Cách cơ bản là cứ tạo loop định kỳ query vào server để xem trạng thái busy, đang rảnh hay đã sập để còn fix.
+Dùng hệ thống chuyên nghiệp Prometheus + Grafana. Prometheus là 1 realtime database mà server lưu data vào, còn Grafana hỗ trợ đọc data và hiển thị lên (có thể dùng remote_write architecture trong ảnh).
+VD có thể dùng Prometheus để ghi bất cứ thứ gì như tình trạng RAM, CPU, DISK, dự đoán khả năng bị lỗi. 
+
+- Alert: hệ thống cảnh báo nếu biết được lỗi sắp/đã/đang xảy ra, có thể implement tự động gửi mail cho admin vào fix chẳng hạn.
+
+-> Ngoài ra còn có các hệ thống Stream polling, MapReduce.
+
+

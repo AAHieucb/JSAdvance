@@ -368,3 +368,38 @@ Thực hiện action khi có sự kiện gì trigger thì lưu vào db và trigg
 
 
 
+# Bài toán xây dựng RAG chatbots for docs
+URL: https://www.freecodecamp.org/news/how-to-build-rag-chatbot-nodejs-gemini-pgvector
+Thay thế cho việc upload toàn bộ pdf lên chatgpt hỏi vị tốn token và lose context. 
+Server nodejs expressjs, google gemini for embedding, Grod for text generation, pgvector và postgresql chạy trong docker, pdf-parse để extract text từ pdf.
+
+RAG có 2 phases tương ứng 2 endpoint duy nhất:
+- Chạy 1 lần upload docs để rag chia thành các chunk nhỏ có overlap 1 chút để tránh miss thông tin ở rìa.
+Chạy từng chunk qua 1 model nhúng xây ra các vector lưu vào postgresql.
+- Mỗi khi user query, thì tìm trong db các chunk có vector liên quan tới câu hỏi và lấy ra 5 chunk liên quan nhất gửi kèm question tới LLM trả lời. 
+
+
+
+# Xây dựng ứng dụng web research AI agent
+URL: https://www.freecodecamp.org/news/build-a-personal-ai-web-research-agent-with-ollama-and-qwen/ 
+Dùng package ollama có tính năng websearch gửi input user vào lấy ra top 5 sites có kết quả gần nhất, đưa vào model của qwen hoặc chatgpt tự lấy api key.
+Thêm system prompt "Use these web results and page contents to answer" là xong.
+
+
+
+# Xây offline image generator
+URL: https://www.freecodecamp.org/news/how-to-build-an-offline-ai-image-generator-in-node-js-with-qvac-and-socket-io/
+QVAC là tool chạy machine learning model ngay trên client hardware, offline, bảo mật, free. Nó bundle machine learning runtimes vào nodejs.
+QVAC dùng Stable Diffusion 2.1 GGUF model cho image generation mà không ngốn nhiều RAM.
+Server và client trao đổi realtime stream với socketio, hiện thị tiến trình.
+Tận dụng GPU, nếu k có thì fallback về CPU lâu hơn. Cũng cần cache model không load lại nhiều lần ở client.
+Multi-process mỗi request thì QVAC sẽ chạy 1 C++ background process
+
+Cơ chế dùng Diffusion của các AI generate image:
+- Model phải đọc hàng tỷ bức ảnh và thêm pixel noise vào cho đến khi k nhận ra hình nữa, rồi denoise reverse về bức ảnh ban đầu. Lặp lại hảng tỷ lần để model biết denoise.
+- Hệ thống CLIP (Contrastive Language-Image Pre-training) có khả biến đổi thứ cần vẽ thành 1 mathematical map. VD vẽ con mèo thì trong map, model sẽ thấy nó gần với bức ảnh mà có các pixel con mèo, AI hiểu nó cần lấy thứ gì trong memory để vẽ ra con mèo.
+- Ấn generate, AI bắt đầu tìm kiếm con mèo trong 1 bức ảnh trống hoàn toàn, nó lặp lại liên tục việc denoise bức ảnh trống thành hình con mèo theo như nó đã được training. 
+Chính vì mỗi lần ấn generate là AI sẽ bắt đầu từ 1 bức ảnh trống, nên mỗi lần luôn gen ra 1 bức ảnh khác nhau.
+- Mỗi lần generate bức ảnh high scale sẽ tốn nhiều phần cứng nên phải dùng Latent Diffusion. PP này sẽ gọi encoder nén ảnh nhỏ lại (latent space) và thực hiện denoise rất nhanh, rồi dùng decoder biến nó thành 1 bức ảnh full resolution.
+
+
